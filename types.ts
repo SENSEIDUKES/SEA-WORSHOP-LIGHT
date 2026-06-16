@@ -19,3 +19,11 @@ export interface Session {
 
 export interface ComponentVariation { name: string; html: string; }
 export interface LayoutOption { name: string; css: string; previewHtml: string; }
+export type ModelProvider = 'gemini' | 'openrouter' | 'ollama' | 'lmstudio';
+
+export interface ModelLabSettings {
+  provider: ModelProvider;
+  modelName: string;
+  apiKey: string;
+  temperature: number;
+}
