@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Artifact } from '../types';
 import { CopyIcon } from './Icons';
+import { useThumbnail } from '../hooks/useThumbnail';
 
 interface ArtifactCardProps {
     artifact: Artifact;
@@ -24,6 +25,7 @@ const ArtifactCard = React.memo(({
     const [showHistory, setShowHistory] = useState(false);
     const [compareVersionIndex, setCompareVersionIndex] = useState<number | null>(null);
     const [copied, setCopied] = useState(false);
+    const { thumbnail, isGenerating: isGeneratingThumbnail } = useThumbnail(artifact.html, artifact.status);
 
     // Auto-scroll logic for this specific card
     useEffect(() => {
@@ -386,6 +388,10 @@ const ArtifactCard = React.memo(({
                              </div>
                          </div>
                      </div>
+                ) : !isFocused && thumbnail ? (
+                    <div style={{ width: '100%', height: '100%', background: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
+                         <img src={thumbnail} alt="Thumbnail preview" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                    </div>
                 ) : (
                     <iframe 
                         srcDoc={artifact.html} 
