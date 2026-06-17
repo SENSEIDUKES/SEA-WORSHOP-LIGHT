@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { generateThumbnail } from '../services/screenshotService';
 
 // Global cache to prevent re-generating screenshots for the same html
-const thumbnailCache = new Map<string, string>();
+export const thumbnailCache = new Map<string, string>();
+
+export const getThumbnailId = (html: string) => {
+    return `${html.length}-${html.substring(Math.floor(html.length/2), Math.floor(html.length/2) + 50)}`;
+};
 
 export function useThumbnail(html: string, status: string) {
     const [thumbnail, setThumbnail] = useState<string | null>(null);
@@ -13,8 +17,7 @@ export function useThumbnail(html: string, status: string) {
         
         let isActive = true;
         // Simple hash-like identifier for caching
-        // Use a subset of HTML length + a snippet to uniquely identify it without heavy hashing
-        const id = `${html.length}-${html.substring(Math.floor(html.length/2), Math.floor(html.length/2) + 50)}`; 
+        const id = getThumbnailId(html); 
         
         if (thumbnailCache.has(id)) {
             setThumbnail(thumbnailCache.get(id)!);

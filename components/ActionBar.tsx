@@ -1,5 +1,5 @@
 import React from 'react';
-import { GridIcon, SparklesIcon, CodeIcon, DownloadIcon } from './Icons';
+import { GridIcon, SparklesIcon, CodeIcon, DownloadIcon, BookmarkIcon } from './Icons';
 import { Session } from '../types';
 
 interface ActionBarProps {
@@ -10,6 +10,7 @@ interface ActionBarProps {
     handleGenerateVariations: () => void;
     handleShowCode: () => void;
     handleExport: () => void;
+    handleSave: () => void;
 }
 
 export default function ActionBar({
@@ -19,7 +20,8 @@ export default function ActionBar({
     setFocusedArtifactIndex,
     handleGenerateVariations,
     handleShowCode,
-    handleExport
+    handleExport,
+    handleSave
 }: ActionBarProps) {
     return (
         <div className={`action-bar ${focusedArtifactIndex !== null ? 'visible' : ''}`}>
@@ -38,6 +40,9 @@ export default function ActionBar({
                 </button>
                 <button onClick={handleExport}>
                     <DownloadIcon /> Export
+                </button>
+                <button onClick={handleSave}>
+                    <BookmarkIcon /> Save
                 </button>
              </div>
         </div>

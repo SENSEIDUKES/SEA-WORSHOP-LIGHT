@@ -13,13 +13,15 @@ interface ArtifactCardProps {
     isFocused: boolean;
     onClick: () => void;
     onRevert?: (artifactId: string, html: string) => void;
+    onDismiss?: () => void;
 }
 
 const ArtifactCard = React.memo(({ 
     artifact, 
     isFocused, 
     onClick,
-    onRevert
+    onRevert,
+    onDismiss
 }: ArtifactCardProps) => {
     const codeRef = useRef<HTMLPreElement>(null);
     const [showHistory, setShowHistory] = useState(false);
@@ -391,6 +393,53 @@ const ArtifactCard = React.memo(({
                 ) : !isFocused && thumbnail ? (
                     <div style={{ width: '100%', height: '100%', background: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
                          <img src={thumbnail} alt="Thumbnail preview" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} />
+                    </div>
+                ) : artifact.status === 'error' ? (
+                    <div 
+                        className="error-card-display"
+                        onClick={(e) => { e.stopPropagation(); }}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            width: '100%',
+                            background: '#121214',
+                            padding: '32px',
+                            textAlign: 'center',
+                            boxSizing: 'border-box',
+                            color: '#fff',
+                            fontFamily: 'Inter, sans-serif',
+                            border: '1px solid rgba(255,107,107,0.2)',
+                            borderRadius: '8px'
+                        }}
+                    >
+                        <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#ff6b6b' }}>Generation Failed</h3>
+                        <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '280px', lineHeight: '1.5' }}>
+                            {artifact.html.replace(/<[^>]*>/g, '') || "An error occurred during generation."}
+                        </p>
+                        {onDismiss && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+                                className="surprise-button"
+                                style={{
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    color: '#fff',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            >
+                                Start Over / Exit
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <iframe 

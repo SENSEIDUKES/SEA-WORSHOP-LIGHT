@@ -39,10 +39,12 @@ export interface Session {
 export interface ComponentVariation { name: string; html: string; }
 export interface LayoutOption { name: string; css: string; previewHtml: string; }
 
-export type AIProvider = "gemini" | "openrouter";
+export type Provider = 'gemini' | 'openrouter' | 'ollama' | 'lmstudio';
 
 export interface ModelSettings {
-  provider: AIProvider;
+  provider: Provider;
   model: string;
   apiKey: string;
+  temperature: number;
+  baseUrl?: string;
 }

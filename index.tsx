@@ -20,11 +20,15 @@ import SettingsPanel from './components/SettingsPanel';
 import ActionDrawer from './components/ActionDrawer';
 import ActionBar from './components/ActionBar';
 import FloatingInput from './components/FloatingInput';
+import LibraryDrawer from './components/LibraryDrawer';
+import { saveComponent } from './services/dbService';
+import { getThumbnailId, thumbnailCache } from './hooks/useThumbnail';
 import { 
     SettingsIcon,
     SparklesIcon, 
     ArrowLeftIcon, 
-    ArrowRightIcon
+    ArrowRightIcon,
+    LibraryIcon
 } from './components/Icons';
 
 function App() {
@@ -34,7 +38,7 @@ function App() {
   
   const [drawerState, setDrawerState] = useState<{
       isOpen: boolean;
-      mode: 'code' | 'variations' | 'export' | null;
+      mode: 'code' | 'variations' | 'export' | 'preview' | null;
       title: string;
       data: any; 
   }>({ isOpen: false, mode: null, title: '', data: null });
@@ -50,6 +54,7 @@ function App() {
   };
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(COMPONENT_PRESETS[0]);
 
   const [showStyleDna, setShowStyleDna] = useState(false);
@@ -65,7 +70,9 @@ function App() {
   // Extract complex state and management into isolated custom hooks
   const {
     sessions,
+    setSessions,
     currentSessionIndex,
+    setCurrentSessionIndex,
     focusedArtifactIndex,
     setFocusedArtifactIndex,
     isLoading,
@@ -237,14 +244,79 @@ function App() {
       }
   }
 
+  const handleDismissSession = () => {
+      if (currentSessionIndex === -1) return;
+      const newSessions = sessions.filter((_, i) => i !== currentSessionIndex);
+      setSessions(newSessions);
+      if (newSessions.length === 0) {
+          setCurrentSessionIndex(-1);
+          setFocusedArtifactIndex(null);
+      } else {
+          setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1));
+          setFocusedArtifactIndex(null);
+      }
+  };
+
+  const handleSaveArtifact = async () => {
+      if (!currentSession || focusedArtifactIndex === null) return;
+      const artifact = currentSession.artifacts[focusedArtifactIndex];
+
+      const thumbnailId = getThumbnailId(artifact.html);
+      let thumbnailDataUrl = thumbnailCache.get(thumbnailId) || null;
+      
+      if (!thumbnailDataUrl) {
+          const { generateThumbnail } = await import('./services/screenshotService');
+          const generated = await generateThumbnail(artifact.html, 800, 600);
+          if (generated) {
+              thumbnailDataUrl = generated;
+              thumbnailCache.set(thumbnailId, generated);
+          }
+      }
+
+      const settings = getSettings();
+
+      await saveComponent({
+          id: artifact.id,
+          name: currentSession.prompt.slice(0, 40) + '...',
+          thumbnail: thumbnailDataUrl,
+          html: artifact.html,
+          prompt: currentSession.prompt,
+          preset: currentSession.componentType || 'default',
+          model: settings.model,
+          provider: settings.provider,
+          favorite: false,
+          timestamp: Date.now()
+      });
+      alert('Component saved to Library!');
+  };
+
   return (
     <>
         <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-        <button className="settings-button" onClick={() => setIsSettingsOpen(true)}>
-            <SettingsIcon />
-        </button>
+        <LibraryDrawer 
+            isOpen={isLibraryOpen} 
+            onClose={() => setIsLibraryOpen(false)} 
+            onSelectComponent={(comp) => {
+                setIsLibraryOpen(false);
+                setDrawerState({
+                    isOpen: true,
+                    mode: 'preview',
+                    title: comp.name,
+                    data: comp
+                });
+            }} 
+        />
+        
+        <div style={{ position: 'fixed', top: '24px', right: '24px', display: 'flex', gap: '12px', zIndex: 100 }}>
+            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsLibraryOpen(true)}>
+                <LibraryIcon />
+            </button>
+            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsSettingsOpen(true)}>
+                <SettingsIcon />
+            </button>
+        </div>
 
-        <a href="https://x.com/ammaar" target="_blank" rel="noreferrer" className={`creator-credit ${hasStarted ? 'hide-on-mobile' : ''}`}>
+        <a href="https://seihouse.world/" target="_blank" rel="noreferrer" className={`creator-credit ${hasStarted ? 'hide-on-mobile' : ''}`}>
             Created by SEIHouse
         </a>
 
@@ -297,6 +369,7 @@ function App() {
                                             isFocused={isFocused}
                                             onClick={() => setFocusedArtifactIndex(aIndex)}
                                             onRevert={handleRevert}
+                                            onDismiss={handleDismissSession}
                                         />
                                     );
                                 })}
@@ -336,6 +409,7 @@ function App() {
                 handleGenerateVariations={handleGenerateVariations}
                 handleShowCode={handleShowCode}
                 handleExport={handleExport}
+                handleSave={handleSaveArtifact}
             />
 
             <FloatingInput

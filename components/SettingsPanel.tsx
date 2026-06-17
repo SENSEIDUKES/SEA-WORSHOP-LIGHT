@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ModelSettings, Provider, getSettings, saveSettings, getSettingsB, saveSettingsB, generateContent, fetchAvailableModels } from '../ai';
+import { getSettings, saveSettings, getSettingsB, saveSettingsB, generateContent, fetchAvailableModels } from '../ai';
+import { ModelSettings, Provider } from '../types';
 
 interface Props {
     isOpen: boolean;

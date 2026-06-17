@@ -9,13 +9,13 @@ import { exportToZip } from '../utils';
 interface ActionDrawerProps {
     drawerState: {
         isOpen: boolean;
-        mode: 'code' | 'variations' | 'export' | null;
+        mode: 'code' | 'variations' | 'export' | 'preview' | null;
         title: string;
         data: any;
     };
     setDrawerState: React.Dispatch<React.SetStateAction<{
         isOpen: boolean;
-        mode: 'code' | 'variations' | 'export' | null;
+        mode: 'code' | 'variations' | 'export' | 'preview' | null;
         title: string;
         data: any;
     }>>;
@@ -84,6 +84,12 @@ export default function ActionDrawer({
                  </div>
             )}
 
+            {drawerState.mode === 'preview' && (
+                <div style={{ width: '100%', height: 'calc(100vh - 120px)', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
+                    <iframe srcDoc={drawerState.data?.html} title="Preview" sandbox="allow-scripts allow-same-origin allow-forms" style={{ width: '100%', height: '100%', border: 'none' }} />
+                </div>
+            )}
+            
             {drawerState.mode === 'code' && (
                 <pre className="code-block"><code>{drawerState.data}</code></pre>
             )}

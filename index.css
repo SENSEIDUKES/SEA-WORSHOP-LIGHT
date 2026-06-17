@@ -49,7 +49,7 @@ html, body {
 .creator-credit {
     position: fixed;
     top: 24px;
-    right: 24px;
+    left: 24px;
     z-index: 101; /* Above input and cards, but below drawer (200) */
     color: var(--text-secondary);
     font-size: 0.85rem;

@@ -1,14 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-
-export type Provider = 'gemini' | 'openrouter' | 'ollama' | 'lmstudio';
-
-export interface ModelSettings {
-  provider: Provider;
-  model: string;
-  apiKey: string;
-  temperature: number;
-  baseUrl?: string;
-}
+import { Provider, ModelSettings } from './types';
 
 export const DEFAULT_SETTINGS: ModelSettings = {
   provider: 'gemini',
@@ -81,14 +72,22 @@ export async function fetchAvailableModels(provider: Provider, apiKey?: string, 
             let url = baseUrl || (provider === 'ollama' ? 'http://localhost:11434/v1/chat/completions' : 'http://localhost:1234/v1/chat/completions');
             // replace chat/completions with models
             url = url.replace(/\/chat\/completions\/?$/, '/models');
-            const res = await fetch(url);
-            if (!res.ok) return [];
-            const data = await res.json();
-            const models = data.data.map((m: any) => m.id);
-            return models.sort((a: string, b: string) => a.localeCompare(b));
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("status: " + res.status);
+                const data = await res.json();
+                const models = data.data.map((m: any) => m.id);
+                return models.sort((a: string, b: string) => a.localeCompare(b));
+            } catch (localError) {
+                if (provider === 'ollama') {
+                    return ['llama3:latest', 'mistral:latest', 'phi3:latest', 'gemma2:latest', 'qwen2:latest'];
+                } else {
+                    return ['meta-llama-3-8b-instruct', 'qwen2-7b-instruct', 'mistral-7b-instruct'];
+                }
+            }
         }
     } catch (e) {
-        console.error("Failed to fetch available models", e);
+        console.warn("Failed to fetch available models", e);
         return [];
     }
 }
