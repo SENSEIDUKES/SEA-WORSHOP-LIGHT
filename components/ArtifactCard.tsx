@@ -3,21 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Artifact } from '../types';
+import { CopyIcon } from './Icons';
 
 interface ArtifactCardProps {
     artifact: Artifact;
     isFocused: boolean;
     onClick: () => void;
+    onRevert?: (artifactId: string, html: string) => void;
 }
 
 const ArtifactCard = React.memo(({ 
     artifact, 
     isFocused, 
-    onClick 
+    onClick,
+    onRevert
 }: ArtifactCardProps) => {
     const codeRef = useRef<HTMLPreElement>(null);
+    const [showHistory, setShowHistory] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     // Auto-scroll logic for this specific card
     useEffect(() => {
@@ -26,7 +31,36 @@ const ArtifactCard = React.memo(({
         }
     }, [artifact.html]);
 
+    // Close history view when active card focus changes
+    useEffect(() => {
+        if (!isFocused) {
+            setShowHistory(false);
+        }
+    }, [isFocused]);
+
     const isBlurring = artifact.status === 'streaming';
+    
+    // Safety check: count total versions in history
+    const versionsCount = artifact.history?.length || 1;
+    const hasHistory = artifact.history && artifact.history.length > 0;
+
+    const handleRevertClick = (e: React.MouseEvent, html: string) => {
+        e.stopPropagation();
+        if (onRevert) {
+            onRevert(artifact.id, html);
+        }
+    };
+
+    const handleCopyCode = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            await navigator.clipboard.writeText(artifact.html);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy code: ', err);
+        }
+    };
 
     return (
         <div 
@@ -35,7 +69,85 @@ const ArtifactCard = React.memo(({
         >
             <div className="artifact-header">
                 <span className="artifact-style-tag">{artifact.styleName}</span>
+                
+                {artifact.status === 'streaming' && (
+                    <div className="artifact-progress-indicator" style={{
+                        marginLeft: 'auto',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '0.75rem',
+                        fontFamily: 'JetBrains Mono, monospace',
+                        color: 'rgba(255,255,255,0.6)',
+                        background: 'rgba(0,0,0,0.3)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                        <span>~{Math.max(1, Math.floor((artifact.html?.length || 0) / 4))} tkns</span>
+                        <span>•</span>
+                        <span>~${(Math.max(1, Math.floor((artifact.html?.length || 0) / 4)) * 0.000003).toFixed(5)}</span>
+                    </div>
+                )}
+
+                {artifact.status === 'complete' && (
+                    <div className="artifact-version-control" onClick={(e) => e.stopPropagation()}>
+                        <span className="artifact-version-badge">v{versionsCount}</span>
+                        {isFocused && (
+                            <button
+                                className="copy-code-button"
+                                style={{
+                                    marginLeft: '8px',
+                                    padding: '2px 8px',
+                                    fontSize: '0.75rem',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    borderRadius: '4px',
+                                    color: '#FAFAFA',
+                                    cursor: 'pointer',
+                                    fontFamily: 'Rubik, sans-serif',
+                                    fontWeight: 400,
+                                    textTransform: 'none',
+                                    transition: 'all 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                                onClick={handleCopyCode}
+                            >
+                                <CopyIcon />
+                                {copied ? 'Copied!' : 'Copy Code'}
+                            </button>
+                        )}
+                        {hasHistory && (
+                            <button 
+                                className="view-history-button"
+                                style={{
+                                    marginLeft: '8px',
+                                    padding: '2px 8px',
+                                    fontSize: '0.75rem',
+                                    background: showHistory ? '#8B0000' : 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    borderRadius: '4px',
+                                    color: '#FAFAFA',
+                                    cursor: 'pointer',
+                                    fontFamily: 'Rubik, sans-serif',
+                                    fontWeight: 400,
+                                    textTransform: 'none',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowHistory(!showHistory);
+                                }}
+                            >
+                                {showHistory ? 'View Live' : 'View History'}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
+            
             <div className="artifact-card-inner">
                 {isBlurring && (
                     <div className="generating-overlay">
@@ -44,6 +156,169 @@ const ArtifactCard = React.memo(({
                         </pre>
                     </div>
                 )}
+                
+                {showHistory && hasHistory && (
+                    <div 
+                        className="history-panel-overlay" 
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 30,
+                            background: 'rgba(0, 0, 0, 0.95)',
+                            color: '#FAFAFA',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            padding: '16px',
+                            overflowY: 'auto',
+                            fontFamily: 'Rubik, sans-serif'
+                        }}
+                    >
+                        <div 
+                            className="history-panel-header"
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '12px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                paddingBottom: '8px'
+                            }}
+                        >
+                            <span 
+                                className="history-panel-title"
+                                style={{
+                                    fontFamily: 'Alegreya SC, serif',
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    letterSpacing: '0.05em',
+                                    color: '#FAFAFA'
+                                }}
+                            >
+                                Generation History
+                            </span>
+                            <button 
+                                className="history-close-btn"
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    padding: '0 4px'
+                                }}
+                                onClick={() => setShowHistory(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div 
+                            className="history-list"
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                flex: 1,
+                                overflowY: 'auto'
+                            }}
+                        >
+                            {artifact.history?.slice().reverse().map((entry, revIndex) => {
+                                // Since we reversed to show newest first, compute correct index
+                                const originalIndex = versionsCount - 1 - revIndex;
+                                const isActive = entry.html === artifact.html;
+                                return (
+                                    <div 
+                                        key={originalIndex} 
+                                        className={`history-entry-item ${isActive ? 'active' : ''}`}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '10px 12px',
+                                            borderRadius: '6px',
+                                            background: isActive ? 'rgba(139, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                                            border: isActive ? '1px solid #8B0000' : '1px solid rgba(255, 255, 255, 0.05)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <div 
+                                            className="history-entry-meta"
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '2px',
+                                                textAlign: 'left'
+                                            }}
+                                        >
+                                            <span 
+                                                style={{
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 500,
+                                                    color: isActive ? '#04ACFF' : '#FAFAFA'
+                                                }}
+                                            >
+                                                Version {originalIndex + 1}
+                                            </span>
+                                            <span 
+                                                style={{
+                                                    fontSize: '0.7rem',
+                                                    color: 'rgba(255,255,255,0.6)'
+                                                }}
+                                            >
+                                                {entry.label}
+                                            </span>
+                                            <span 
+                                                style={{
+                                                    fontSize: '0.65rem',
+                                                    color: 'rgba(255,255,255,0.4)',
+                                                    fontFamily: 'monospace'
+                                                }}
+                                            >
+                                                {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        {isActive ? (
+                                            <span 
+                                                style={{
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 500,
+                                                    color: '#04ACFF',
+                                                    border: '1px solid rgba(4, 172, 255, 0.3)',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: 'rgba(4, 172, 255, 0.05)'
+                                                }}
+                                            >
+                                                Current
+                                            </span>
+                                        ) : (
+                                            <button 
+                                                className="revert-btn"
+                                                style={{
+                                                    background: '#04ACFF',
+                                                    color: '#000000',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    padding: '4px 10px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    fontFamily: 'Rubik, sans-serif',
+                                                    boxShadow: '0 2px 4px rgba(4, 172, 255, 0.2)',
+                                                    transition: 'all 0.2s ease',
+                                                }}
+                                                onClick={(e) => handleRevertClick(e, entry.html)}
+                                            >
+                                                Revert
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 <iframe 
                     srcDoc={artifact.html} 
                     title={artifact.id} 
