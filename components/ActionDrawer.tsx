@@ -4,6 +4,7 @@ import { ThinkingIcon } from './Icons';
 import { ComponentVariation } from '../types';
 import { generateContent, getSettings } from '../ai';
 import { getReactExportPrompt, getReactTailwindExportPrompt } from '../prompts';
+import { exportToZip } from '../utils';
 
 interface ActionDrawerProps {
     drawerState: {
@@ -106,17 +107,13 @@ export default function ActionDrawer({
                         Generate production-ready code from this design variation.
                     </p>
                     <div className="export-card available">
-                        <h3>Preview HTML</h3>
-                        <p>Self-contained HTML, CSS, and JS. Good for iframe previews.</p>
-                        <button onClick={() => {
-                            const blob = new Blob([drawerState.data?.html || ''], { type: 'text/html' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `component-${drawerState.data?.id}.html`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                        }}>Download HTML</button>
+                        <h3>Download ZIP</h3>
+                        <p>Packaged archive containing split HTML, CSS, and JS files.</p>
+                        <button onClick={async () => {
+                            if (drawerState.data?.html) {
+                                await exportToZip(drawerState.data.html, `component-${drawerState.data?.id}`);
+                            }
+                        }}>Download ZIP</button>
                     </div>
                     <div className="export-card available">
                         <h3>React Component</h3>

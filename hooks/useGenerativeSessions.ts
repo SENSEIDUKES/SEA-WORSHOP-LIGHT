@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Artifact, Session, ComponentVariation, ModelSettings } from '../types';
 import { generateId } from '../utils';
 import { generateContent, generateContentStream, getSettings, getSettingsB } from '../ai';
-import { getEditPrompt, getStylePrompt, getGenerateArtifactPrompt, getGenerateVariationsPrompt } from '../prompts';
+import { getEditPrompt, getStylePrompt, getGenerateArtifactPrompt, getGenerateVariationsPrompt, getFusionPrompt } from '../prompts';
 
 export interface GenerateOptions {
   componentType: string;
@@ -377,6 +377,88 @@ export function useGenerativeSessions() {
     })));
   }, []);
 
+  const handleFuse = useCallback(async () => {
+    const currentSession = sessions[currentSessionIndex];
+    if (!currentSession || currentSession.artifacts.length < 2) return;
+    
+    setIsLoading(true);
+    
+    const artA = currentSession.artifacts[0];
+    const artB = currentSession.artifacts[1];
+    
+    const newArtifactId = `${currentSession.id}_fusion`;
+    const newArtifact: Artifact = {
+      id: newArtifactId,
+      styleName: 'Fusion Master',
+      html: '',
+      status: 'streaming'
+    };
+
+    setSessions(prev => prev.map((s, i) => i === currentSessionIndex ? {
+      ...s,
+      artifacts: [...s.artifacts, newArtifact]
+    } : s));
+    
+    setFocusedArtifactIndex(currentSession.artifacts.length);
+
+    try {
+      const settings = getSettings();
+      const prompt = getFusionPrompt(
+        currentSession.prompt,
+        currentSession.componentType || 'Freeform Component',
+        artA.html,
+        artB.html
+      );
+
+      const responseStream = await generateContentStream(prompt, settings);
+
+      let accumulatedHtml = '';
+      for await (const chunk of responseStream) {
+        const text = chunk.text;
+        if (typeof text === 'string') {
+          accumulatedHtml += text;
+          setSessions(prev => prev.map((sess, i) => i === currentSessionIndex ? {
+            ...sess,
+            artifacts: sess.artifacts.map((art, j) => j === currentSession.artifacts.length ? {
+              ...art, html: accumulatedHtml
+            } : art)
+          } : sess));
+        }
+      }
+      
+      let finalHtml = accumulatedHtml.trim();
+      if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
+      if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
+      if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+
+      setSessions(prev => prev.map((sess, i) => i === currentSessionIndex ? {
+        ...sess,
+        artifacts: sess.artifacts.map((art, j) => j === currentSession.artifacts.length ? {
+          ...art, 
+          html: finalHtml, 
+          status: (finalHtml ? 'complete' : 'error') as 'complete' | 'error',
+          history: finalHtml ? [{
+            html: finalHtml,
+            timestamp: Date.now(),
+            label: 'Fusion Base'
+          }] : []
+        } : art)
+      } : sess));
+
+    } catch (e: any) {
+       setSessions(prev => prev.map((sess, i) => i === currentSessionIndex ? {
+        ...sess,
+        artifacts: sess.artifacts.map((art, j) => j === currentSession.artifacts.length ? {
+          ...art, 
+          html: `<div style="color: #ff6b6b; padding: 20px;">Fusion Error: ${e.message}</div>`,
+          status: 'error'
+        } : art)
+      } : sess));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessions, currentSessionIndex]);
+
   const nextItem = useCallback(() => {
     const currentSession = sessions[currentSessionIndex];
     if (focusedArtifactIndex !== null) {
@@ -417,6 +499,7 @@ export function useGenerativeSessions() {
     handleGenerateVariations,
     applyVariation,
     handleRevert,
+    handleFuse,
     nextItem,
     prevItem
   };

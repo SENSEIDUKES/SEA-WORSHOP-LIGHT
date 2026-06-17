@@ -63,6 +63,35 @@ ${dnaContext}
 8. Output self-contained HTML/CSS. No markdown fences. No explanation.
 `.trim();
 
+export const getFusionPrompt = (
+  input: string,
+  componentType: string,
+  htmlA: string,
+  htmlB: string
+) => `
+You are SEA Workshop Light, an expert UI designer.
+Your task is to review two different UI implementations for the following request and fuse them into a single Master Component.
+
+Request: "${input}"
+Component Type: ${componentType}
+
+**Implementation A:**
+\`\`\`html
+${htmlA}
+\`\`\`
+
+**Implementation B:**
+\`\`\`html
+${htmlB}
+\`\`\`
+
+**RULES:**
+1. Combine the best elements, layouts, and aesthetic cues from Implementation A and Implementation B.
+2. Ensure the final fused component is a single, cohesive, high-fidelity UI component.
+3. Keep premium dark music-product styling (black, off-white, deep red, electric blue accents).
+4. Output ONLY the new raw, self-contained HTML/CSS. No markdown fences. No explanation.
+`.trim();
+
 export const getReactExportPrompt = (htmlCode: string) => `
 You are an expert Frontend Engineer. Convert the following HTML/CSS into a clean, modular React component.
 Use standard CSS (not Tailwind) and functional hooks where appropriate.

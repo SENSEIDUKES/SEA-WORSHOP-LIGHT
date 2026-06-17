@@ -1,4 +1,5 @@
 /* index.css - Immersive "Radical" Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+SC:wght@500;700&family=Rubik:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Noto+Serif:wght@200;300;400&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
 
@@ -1136,7 +1137,6 @@ html, body {
 .save-btn:hover { background: #e5e5e5; transform: translateY(-1px); }
 
 /* === SEIHouse Custom Brands & Version History Styling === */
-@import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+SC:wght@500;700&family=Rubik:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Noto+Serif:wght@200;300;400&display=swap');
 
 :root {
     --font-heading: 'Alegreya', serif;

@@ -74,6 +74,7 @@ function App() {
     handleGenerateVariations: runGenerateVariations,
     applyVariation: runApplyVariation,
     handleRevert,
+    handleFuse,
     nextItem,
     prevItem
   } = useGenerativeSessions();
@@ -281,6 +282,8 @@ function App() {
                     else if (sIndex < currentSessionIndex) positionClass = 'past-session';
                     else if (sIndex > currentSessionIndex) positionClass = 'future-session';
                     
+                    const canFuse = isDualMode && session.artifacts.length === 2 && sIndex === currentSessionIndex && !isLoading;
+
                     return (
                         <div key={session.id} className={`session-group ${positionClass}`}>
                             <div className="artifact-grid" ref={sIndex === currentSessionIndex ? gridScrollRef : null}>
@@ -298,6 +301,17 @@ function App() {
                                     );
                                 })}
                             </div>
+                            {canFuse && focusedArtifactIndex === null && (
+                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', position: 'relative', zIndex: 10 }}>
+                                    <button 
+                                       className="surprise-button" 
+                                       onClick={() => handleFuse()}
+                                       style={{ background: 'var(--primary-color)', color: '#000', border: 'none', padding: '12px 24px', fontSize: '16px', cursor: 'pointer' }}
+                                    >
+                                        <SparklesIcon /> Fuse Master Component
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     );
                 })}
