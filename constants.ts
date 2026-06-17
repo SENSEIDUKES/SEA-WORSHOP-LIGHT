@@ -25,3 +25,12 @@ export const COMPONENT_PRESETS = [
   { id: 'mini_settings', label: 'Mini Settings Panel', instruction: 'Make a compact, modular settings panel with small toggles and sliders.' },
   { id: 'decorative_effect', label: 'Decorative Effect', instruction: 'Make a purely decorative sonic visual effect or ambient background element.' }
 ];
+
+export const DNA_DIMENSIONS = [
+  { key: 'theme', labelLeft: 'Dark', labelRight: 'Light', low: 'Dark', high: 'Light' },
+  { key: 'complexity', labelLeft: 'Minimal', labelRight: 'Expressive', low: 'Minimal', high: 'Expressive' },
+  { key: 'texture', labelLeft: 'Flat', labelRight: 'Glassy', low: 'Flat', high: 'Glassy' },
+  { key: 'vibe', labelLeft: 'Clean', labelRight: 'Experimental', low: 'Clean', high: 'Experimental' },
+  { key: 'edge', labelLeft: 'Soft', labelRight: 'Aggressive', low: 'Soft', high: 'Aggressive' },
+  { key: 'era', labelLeft: 'Modern', labelRight: 'Retro', low: 'Modern', high: 'Retro' },
+];

@@ -22,6 +22,7 @@ const ArtifactCard = React.memo(({
 }: ArtifactCardProps) => {
     const codeRef = useRef<HTMLPreElement>(null);
     const [showHistory, setShowHistory] = useState(false);
+    const [compareVersionIndex, setCompareVersionIndex] = useState<number | null>(null);
     const [copied, setCopied] = useState(false);
 
     // Auto-scroll logic for this specific card
@@ -35,6 +36,7 @@ const ArtifactCard = React.memo(({
     useEffect(() => {
         if (!isFocused) {
             setShowHistory(false);
+            setCompareVersionIndex(null);
         }
     }, [isFocused]);
 
@@ -292,25 +294,51 @@ const ArtifactCard = React.memo(({
                                                 Current
                                             </span>
                                         ) : (
-                                            <button 
-                                                className="revert-btn"
-                                                style={{
-                                                    background: '#04ACFF',
-                                                    color: '#000000',
-                                                    border: 'none',
-                                                    borderRadius: '4px',
-                                                    padding: '4px 10px',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 500,
-                                                    cursor: 'pointer',
-                                                    fontFamily: 'Rubik, sans-serif',
-                                                    boxShadow: '0 2px 4px rgba(4, 172, 255, 0.2)',
-                                                    transition: 'all 0.2s ease',
-                                                }}
-                                                onClick={(e) => handleRevertClick(e, entry.html)}
-                                            >
-                                                Revert
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <button 
+                                                    className="compare-btn"
+                                                    style={{
+                                                        background: 'transparent',
+                                                        color: '#FAFAFA',
+                                                        border: '1px solid rgba(255,255,255,0.2)',
+                                                        borderRadius: '4px',
+                                                        padding: '4px 10px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 500,
+                                                        cursor: 'pointer',
+                                                        fontFamily: 'Rubik, sans-serif',
+                                                        transition: 'all 0.2s ease',
+                                                    }}
+                                                    onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCompareVersionIndex(originalIndex);
+                                                        setShowHistory(false);
+                                                    }}
+                                                >
+                                                    Compare
+                                                </button>
+                                                <button 
+                                                    className="revert-btn"
+                                                    style={{
+                                                        background: '#04ACFF',
+                                                        color: '#000000',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        padding: '4px 10px',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 500,
+                                                        cursor: 'pointer',
+                                                        fontFamily: 'Rubik, sans-serif',
+                                                        boxShadow: '0 2px 4px rgba(4, 172, 255, 0.2)',
+                                                        transition: 'all 0.2s ease',
+                                                    }}
+                                                    onClick={(e) => handleRevertClick(e, entry.html)}
+                                                >
+                                                    Revert
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 );
@@ -319,12 +347,53 @@ const ArtifactCard = React.memo(({
                     </div>
                 )}
 
-                <iframe 
-                    srcDoc={artifact.html} 
-                    title={artifact.id} 
-                    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-same-origin"
-                    className="artifact-iframe"
-                />
+                {compareVersionIndex !== null && hasHistory && artifact.history ? (
+                     <div style={{ display: 'flex', width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 20 }}>
+                         <div style={{ flex: 1, position: 'relative', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.85)', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                 <span style={{ fontSize: '0.8rem', color: '#FAFAFA', fontWeight: 500 }}>
+                                     Version v{compareVersionIndex + 1}
+                                 </span>
+                             </div>
+                             <div style={{ width: '100%', height: '100%', paddingTop: '34px', boxSizing: 'border-box', background: '#fff' }}>
+                                 <iframe 
+                                     srcDoc={artifact.history[compareVersionIndex].html} 
+                                     title={`${artifact.id}-compare`} 
+                                     sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-same-origin"
+                                     className="artifact-iframe"
+                                 />
+                             </div>
+                         </div>
+                         <div style={{ flex: 1, position: 'relative' }}>
+                             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.85)', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                 <span style={{ fontSize: '0.8rem', color: '#04ACFF', fontWeight: 500 }}>
+                                     Current (v{versionsCount})
+                                 </span>
+                                 <button 
+                                     style={{ background: 'none', border: 'none', color: '#FAFAFA', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                                     onClick={(e) => { e.stopPropagation(); setCompareVersionIndex(null); setShowHistory(true); }}
+                                 >
+                                     ✕
+                                 </button>
+                             </div>
+                             <div style={{ width: '100%', height: '100%', paddingTop: '34px', boxSizing: 'border-box', background: '#fff' }}>
+                                 <iframe 
+                                     srcDoc={artifact.html} 
+                                     title={`${artifact.id}-current`} 
+                                     sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-same-origin"
+                                     className="artifact-iframe"
+                                 />
+                             </div>
+                         </div>
+                     </div>
+                ) : (
+                    <iframe 
+                        srcDoc={artifact.html} 
+                        title={artifact.id} 
+                        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-same-origin"
+                        className="artifact-iframe"
+                    />
+                )}
             </div>
         </div>
     );

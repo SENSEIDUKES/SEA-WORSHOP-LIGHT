@@ -17,6 +17,13 @@ export const DEFAULT_SETTINGS: ModelSettings = {
   temperature: 1.2
 };
 
+export const DEFAULT_SETTINGS_B: ModelSettings = {
+  provider: 'openrouter',
+  model: 'anthropic/claude-3-haiku',
+  apiKey: '',
+  temperature: 1.2
+};
+
 export function getSettings(): ModelSettings {
     const raw = localStorage.getItem('sea_model_settings');
     if (raw) {
@@ -31,6 +38,22 @@ export function getSettings(): ModelSettings {
 
 export function saveSettings(settings: ModelSettings) {
     localStorage.setItem('sea_model_settings', JSON.stringify(settings));
+}
+
+export function getSettingsB(): ModelSettings {
+    const raw = localStorage.getItem('sea_model_settings_b');
+    if (raw) {
+        try {
+            return { ...DEFAULT_SETTINGS_B, ...JSON.parse(raw) };
+        } catch (e) {
+            console.error('Failed to parse settings B', e);
+        }
+    }
+    return DEFAULT_SETTINGS_B;
+}
+
+export function saveSettingsB(settings: ModelSettings) {
+    localStorage.setItem('sea_model_settings_b', JSON.stringify(settings));
 }
 
 export async function fetchAvailableModels(provider: Provider, apiKey?: string, baseUrl?: string): Promise<string[]> {

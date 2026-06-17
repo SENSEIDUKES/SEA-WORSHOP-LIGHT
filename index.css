@@ -97,6 +97,59 @@ html, body {
     z-index: 0;
     animation: ambientFadeIn 1.5s ease-out forwards;
     padding: 20px;
+    overflow: hidden;
+}
+
+.empty-state::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 40%, rgba(0, 0, 0, 0) 70%);
+    opacity: 0;
+    animation: lightningFlash 8s infinite ease-in-out;
+}
+
+@keyframes lightningFlash {
+    0%, 82%, 100% {
+        opacity: 0;
+        filter: brightness(1);
+    }
+    /* Pre-flash warning spark */
+    83% {
+        opacity: 0.35;
+        filter: brightness(1.2);
+    }
+    84% {
+        opacity: 0.05;
+        filter: brightness(1);
+    }
+    /* Dramatic primary lightning flash strike */
+    85.5% {
+        opacity: 1;
+        filter: brightness(1.95);
+        background: radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0) 80%);
+    }
+    /* Double-pulse flicker response */
+    86.5% {
+        opacity: 0.25;
+        filter: brightness(1.1);
+    }
+    87.5% {
+        opacity: 0.85;
+        filter: brightness(1.7);
+        background: radial-gradient(circle at 50% 25%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0) 80%);
+    }
+    /* Gradual, atmospheric dark sky visual decay */
+    92% {
+        opacity: 0.1;
+        filter: brightness(1.05);
+    }
+    94% {
+        opacity: 0;
+        filter: brightness(1);
+    }
 }
 
 @keyframes ambientFadeIn {
@@ -165,6 +218,18 @@ html, body {
     background: rgba(255,255,255,0.2);
     transform: scale(1.05);
     box-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+.surprise-button.active {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+    border-color: #fff;
+    box-shadow: 0 0 15px rgba(255,255,255,0.4);
+}
+.surprise-button.active:hover {
+    background: #fff;
+    color: #000;
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255,255,255,0.6);
 }
 
 @keyframes dramaticEntrance {
