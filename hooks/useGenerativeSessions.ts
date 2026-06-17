@@ -10,6 +10,7 @@ export interface GenerateOptions {
   isDualMode: boolean;
   showStyleDna: boolean;
   styleDnaPrompt: string;
+  referenceImage?: string;
 }
 
 export function useGenerativeSessions() {
@@ -161,6 +162,7 @@ export function useGenerativeSessions() {
     const newSession: Session = {
       id: sessionId,
       prompt: trimmedInput,
+      referenceImage: options.referenceImage,
       componentType: options.componentType,
       timestamp: baseTime,
       artifacts: placeholderArtifacts
@@ -176,7 +178,7 @@ export function useGenerativeSessions() {
 
       const stylePrompt = getStylePrompt(trimmedInput, options.componentType, dnaContext);
 
-      const styleResponse = await generateContent(stylePrompt, settings);
+      const styleResponse = await generateContent(stylePrompt, settings, options.referenceImage);
 
       let generatedStyles: string[] = [];
       const styleText = styleResponse.text || '[]';
@@ -223,7 +225,7 @@ export function useGenerativeSessions() {
             dnaContext
           );
 
-          const responseStream = await generateContentStream(prompt, activeSettings);
+          const responseStream = await generateContentStream(prompt, activeSettings, options.referenceImage);
 
           let accumulatedHtml = '';
           for await (const chunk of responseStream) {
@@ -377,7 +379,7 @@ export function useGenerativeSessions() {
     })));
   }, []);
 
-  const handleFuse = useCallback(async () => {
+  const handleFuse = useCallback(async (fusionMode: string = 'Best Of') => {
     const currentSession = sessions[currentSessionIndex];
     if (!currentSession || currentSession.artifacts.length < 2) return;
     
@@ -389,7 +391,7 @@ export function useGenerativeSessions() {
     const newArtifactId = `${currentSession.id}_fusion`;
     const newArtifact: Artifact = {
       id: newArtifactId,
-      styleName: 'Fusion Master',
+      styleName: `Fusion Master (${fusionMode})`,
       html: '',
       status: 'streaming'
     };
@@ -407,7 +409,8 @@ export function useGenerativeSessions() {
         currentSession.prompt,
         currentSession.componentType || 'Freeform Component',
         artA.html,
-        artB.html
+        artB.html,
+        fusionMode
       );
 
       const responseStream = await generateContentStream(prompt, settings);

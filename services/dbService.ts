@@ -104,10 +104,27 @@ export const toggleFavorite = async (id: string): Promise<void> => {
             const store = transaction.objectStore(STORE_NAME);
             const request = store.get(id);
 
-            request.onsuccess = (event) => {
+            request.onsuccess = async (event) => {
                 const component = (event.target as IDBRequest).result as SavedComponent;
                 if (component) {
                     component.favorite = !component.favorite;
+                    
+                    if (component.favorite && !component.thumbnail) {
+                        try {
+                            const { generateThumbnail } = await import('./screenshotService');
+                            const generated = await generateThumbnail(component.html, 800, 600);
+                            if (generated) {
+                                component.thumbnail = generated;
+                                const { thumbnailCache, getThumbnailId } = await import('../hooks/useThumbnail');
+                                const thId = getThumbnailId(component.html);
+                                thumbnailCache.set(thId, generated);
+                                window.dispatchEvent(new CustomEvent('thumbnail_generated', { detail: { id: thId, dataUrl: generated } }));
+                            }
+                        } catch (err) {
+                            console.error("Failed to generate lazy thumbnail on favorite:", err);
+                        }
+                    }
+                    
                     store.put(component).onsuccess = () => resolve();
                 } else {
                     resolve();

@@ -67,13 +67,15 @@ export const getFusionPrompt = (
   input: string,
   componentType: string,
   htmlA: string,
-  htmlB: string
+  htmlB: string,
+  fusionMode: string = 'Best Of'
 ) => `
 You are SEA Workshop Light, an expert UI designer.
 Your task is to review two different UI implementations for the following request and fuse them into a single Master Component.
 
 Request: "${input}"
 Component Type: ${componentType}
+Fusion Mode: ${fusionMode}
 
 **Implementation A:**
 \`\`\`html
@@ -85,11 +87,16 @@ ${htmlA}
 ${htmlB}
 \`\`\`
 
-**RULES:**
-1. Combine the best elements, layouts, and aesthetic cues from Implementation A and Implementation B.
-2. Ensure the final fused component is a single, cohesive, high-fidelity UI component.
-3. Keep premium dark music-product styling (black, off-white, deep red, electric blue accents).
-4. Output ONLY the new raw, self-contained HTML/CSS. No markdown fences. No explanation.
+**RULES FOR FUSION MODE: ${fusionMode}**
+${fusionMode === 'Best Of' ? 'Combine the strongest functional and visual setup pieces from both Implementation A and Implementation B.' : ''}
+${fusionMode === 'A Look + B Structure' ? 'Apply the visual style, colors, and textures of Implementation A onto the structural layout and elements of Implementation B.' : ''}
+${fusionMode === 'B Look + A Structure' ? 'Apply the visual style, colors, and textures of Implementation B onto the structural layout and elements of Implementation A.' : ''}
+${fusionMode === 'Cleaner / Production' ? 'Simplify the combined designs. Remove messy, bloated, or overly complex CSS. Ensure it looks like a clean, production-ready component.' : ''}
+
+**GENERAL RULES:**
+1. Ensure the final fused component is a single, cohesive, high-fidelity UI component.
+2. Keep premium dark music-product styling (black, off-white, deep red, electric blue accents).
+3. Output ONLY the new raw, self-contained HTML/CSS. No markdown fences. No explanation.
 `.trim();
 
 export const getReactExportPrompt = (htmlCode: string) => `

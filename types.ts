@@ -31,6 +31,7 @@ export interface Artifact {
 export interface Session {
     id: string;
     prompt: string;
+    referenceImage?: string; // data URI format
     componentType?: string;
     timestamp: number;
     artifacts: Artifact[];

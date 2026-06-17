@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { generateThumbnail } from '../services/screenshotService';
 
 // Global cache to prevent re-generating screenshots for the same html
 export const thumbnailCache = new Map<string, string>();
 
 export const getThumbnailId = (html: string) => {
+    if (!html) return '';
     return `${html.length}-${html.substring(Math.floor(html.length/2), Math.floor(html.length/2) + 50)}`;
 };
 
@@ -13,38 +13,35 @@ export function useThumbnail(html: string, status: string) {
     const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
-        if (status !== 'complete' || !html) return;
-        
-        let isActive = true;
-        // Simple hash-like identifier for caching
-        const id = getThumbnailId(html); 
-        
-        if (thumbnailCache.has(id)) {
-            setThumbnail(thumbnailCache.get(id)!);
+        if (!html) {
+            setThumbnail(null);
             return;
         }
-
-        setIsGenerating(true);
-        // Delay generation slightly to avoid blocking UI immediately after render
-        const timer = setTimeout(() => {
-            generateThumbnail(html, 800, 600).then(dataUrl => {
-                if (dataUrl) {
-                    thumbnailCache.set(id, dataUrl);
-                    if (isActive) {
-                        setThumbnail(dataUrl);
-                        setIsGenerating(false);
-                    }
-                } else if (isActive) {
-                    setIsGenerating(false);
-                }
-            });
-        }, 1200);
         
-        return () => {
-            isActive = false;
-            clearTimeout(timer);
+        const id = getThumbnailId(html);
+        if (thumbnailCache.has(id)) {
+            setThumbnail(thumbnailCache.get(id)!);
+        } else {
+            setThumbnail(null);
+        }
+    }, [html]);
+
+    useEffect(() => {
+        if (!html) return;
+        const id = getThumbnailId(html);
+
+        const handleThumbnailGenerated = (e: Event) => {
+            const customEvent = e as CustomEvent<{ id: string; dataUrl: string }>;
+            if (customEvent.detail && customEvent.detail.id === id) {
+                setThumbnail(customEvent.detail.dataUrl);
+            }
         };
-    }, [html, status]);
+
+        window.addEventListener('thumbnail_generated', handleThumbnailGenerated);
+        return () => {
+            window.removeEventListener('thumbnail_generated', handleThumbnailGenerated);
+        };
+    }, [html]);
     
     return { thumbnail, isGenerating };
 }

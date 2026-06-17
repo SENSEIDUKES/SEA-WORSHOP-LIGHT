@@ -124,7 +124,7 @@ export async function* parseOpenAIStream(response: Response) {
     }
 }
 
-export async function generateContentStream(prompt: string, settings: ModelSettings): Promise<AsyncGenerator<{text: string}>> {
+export async function generateContentStream(prompt: string, settings: ModelSettings, imageBase64?: string): Promise<AsyncGenerator<{text: string}>> {
     const { provider, model, apiKey, temperature, baseUrl } = settings;
     
     // For gemini, fallback to process.env if apiKey is empty in settings
@@ -133,9 +133,21 @@ export async function generateContentStream(prompt: string, settings: ModelSetti
     if (provider === 'gemini') {
         if (!finalApiKey) throw new Error("Gemini API_KEY is not configured.");
         const ai = new GoogleGenAI({ apiKey: finalApiKey });
+        const parts: any[] = [];
+        if (imageBase64) {
+            // Assume imageBase64 contains data URI, e.g. "data:image/jpeg;base64,...", need to extract purely the base64 data and mimeType
+            const match = imageBase64.match(/^data:(image\/[a-zA-Z]*);base64,(.*)$/);
+            if (match) {
+                parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+            } else {
+                parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+            }
+        }
+        parts.push({ text: prompt });
+        
         const responseStream = await ai.models.generateContentStream({
             model: model || 'gemini-3-flash-preview',
-            contents: [{ parts: [{ text: prompt }], role: 'user' }],
+            contents: [{ parts, role: 'user' }],
             config: { temperature }
         });
         return responseStream;
@@ -166,13 +178,23 @@ export async function generateContentStream(prompt: string, settings: ModelSetti
     if (provider === 'openrouter' && model.includes('anthropic')) {
         finalTemperature = Math.min(finalTemperature, 1.0);
     }
+    
+    let contentPattern: any = prompt;
+    if (imageBase64) {
+        // Assume imageBase64 has the data URI format, otherwise add it
+        const imageUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+        contentPattern = [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageUrl } }
+        ];
+    }
 
     const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
             model,
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: contentPattern }],
             temperature: finalTemperature,
             stream: true,
         })
@@ -188,16 +210,27 @@ export async function generateContentStream(prompt: string, settings: ModelSetti
     return parseOpenAIStream(response);
 }
 
-export async function generateContent(prompt: string, settings: ModelSettings): Promise<{ text: string }> {
+export async function generateContent(prompt: string, settings: ModelSettings, imageBase64?: string): Promise<{ text: string }> {
     const { provider, model, apiKey, temperature, baseUrl } = settings;
     const finalApiKey = apiKey || (process.env.API_KEY as string);
     
     if (provider === 'gemini') {
         if (!finalApiKey) throw new Error("Gemini API_KEY is not configured.");
         const ai = new GoogleGenAI({ apiKey: finalApiKey });
+        const parts: any[] = [];
+        if (imageBase64) {
+            const match = imageBase64.match(/^data:(image\/[a-zA-Z]*);base64,(.*)$/);
+            if (match) {
+                parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+            } else {
+                parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+            }
+        }
+        parts.push({ text: prompt });
+
         const response = await ai.models.generateContent({
             model: model || 'gemini-3-flash-preview',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: [{ role: 'user', parts }],
             config: { temperature }
         });
         return { text: response.text || '' };
@@ -227,12 +260,21 @@ export async function generateContent(prompt: string, settings: ModelSettings): 
         finalTemperature = Math.min(finalTemperature, 1.0);
     }
 
+    let contentPattern: any = prompt;
+    if (imageBase64) {
+        const imageUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+        contentPattern = [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageUrl } }
+        ];
+    }
+
     const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
             model,
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: contentPattern }],
             temperature: finalTemperature,
             stream: false,
         })

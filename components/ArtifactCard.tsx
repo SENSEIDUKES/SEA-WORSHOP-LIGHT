@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Artifact } from '../types';
 import { CopyIcon } from './Icons';
 import { useThumbnail } from '../hooks/useThumbnail';
+import { useLanguage } from '../localization';
 
 interface ArtifactCardProps {
     artifact: Artifact;
@@ -23,6 +24,7 @@ const ArtifactCard = React.memo(({
     onRevert,
     onDismiss
 }: ArtifactCardProps) => {
+    const { t } = useLanguage();
     const codeRef = useRef<HTMLPreElement>(null);
     const [showHistory, setShowHistory] = useState(false);
     const [compareVersionIndex, setCompareVersionIndex] = useState<number | null>(null);
@@ -416,9 +418,9 @@ const ArtifactCard = React.memo(({
                         }}
                     >
                         <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#ff6b6b' }}>Generation Failed</h3>
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#ff6b6b' }}>{t('gen_failed')}</h3>
                         <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'rgba(255,255,255,0.7)', maxWidth: '280px', lineHeight: '1.5' }}>
-                            {artifact.html.replace(/<[^>]*>/g, '') || "An error occurred during generation."}
+                            {artifact.html.replace(/<[^>]*>/g, '') || t('error_occured')}
                         </p>
                         {onDismiss && (
                             <button 
@@ -437,7 +439,7 @@ const ArtifactCard = React.memo(({
                                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                                 onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                             >
-                                Start Over / Exit
+                                {t('exit_error')}
                             </button>
                         )}
                     </div>

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings, getSettingsB, saveSettingsB, generateContent, fetchAvailableModels } from '../ai';
 import { ModelSettings, Provider } from '../types';
+import { useLanguage, LANGUAGE_NAMES, Language } from '../localization';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
+    onOpenInfo: () => void;
 }
 
-export default function SettingsPanel({ isOpen, onClose }: Props) {
+export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
+    const { lang, changeLanguage, t } = useLanguage();
     const [activeTab, setActiveTab] = useState<'A' | 'B'>('A');
     const [settingsA, setSettingsA] = useState<ModelSettings>(getSettings());
     const [settingsB, setSettingsB] = useState<ModelSettings>(getSettingsB());
@@ -212,6 +215,46 @@ export default function SettingsPanel({ isOpen, onClose }: Props) {
                             value={currentSettings.temperature} 
                             onChange={(e) => setCurrentSettings({ ...currentSettings, temperature: parseFloat(e.target.value) })}
                         />
+                    </div>
+
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '20px 0' }}></div>
+                    
+                    <div className="setting-group">
+                        <label>Language / Idioma</label>
+                        <select 
+                            value={lang} 
+                            onChange={(e) => changeLanguage(e.target.value as Language)}
+                            style={{ width: '100%' }}
+                        >
+                            {(Object.keys(LANGUAGE_NAMES) as Language[]).map((l) => (
+                                <option key={l} value={l}>
+                                    {LANGUAGE_NAMES[l]}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="setting-group">
+                        <label>How to Use / Guide</label>
+                        <button 
+                            className="test-btn" 
+                            onClick={onOpenInfo}
+                            style={{ 
+                                width: '100%', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                gap: '8px', 
+                                height: '38px',
+                                background: 'rgba(255, 255, 255, 0.05)', 
+                                border: '1px solid var(--border-color)', 
+                                color: 'var(--text-color)',
+                                cursor: 'pointer',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            <span>ℹ️</span> {t('how_to_use')}
+                        </button>
                     </div>
                 </div>
 

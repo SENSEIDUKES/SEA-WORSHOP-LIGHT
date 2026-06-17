@@ -21,20 +21,26 @@ import ActionDrawer from './components/ActionDrawer';
 import ActionBar from './components/ActionBar';
 import FloatingInput from './components/FloatingInput';
 import LibraryDrawer from './components/LibraryDrawer';
+import InfoDrawer from './components/InfoDrawer';
 import { saveComponent } from './services/dbService';
 import { getThumbnailId, thumbnailCache } from './hooks/useThumbnail';
+import { useLanguage, LANGUAGE_NAMES, Language } from './localization';
 import { 
     SettingsIcon,
     SparklesIcon, 
     ArrowLeftIcon, 
     ArrowRightIcon,
-    LibraryIcon
+    LibraryIcon,
+    InfoIcon
 } from './components/Icons';
 
 function App() {
+  const { lang, changeLanguage, t } = useLanguage();
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const [inputValue, setInputValue] = useState<string>('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [placeholders, setPlaceholders] = useState<string[]>(INITIAL_PLACEHOLDERS);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
   
   const [drawerState, setDrawerState] = useState<{
       isOpen: boolean;
@@ -55,6 +61,7 @@ function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(COMPONENT_PRESETS[0]);
 
   const [showStyleDna, setShowStyleDna] = useState(false);
@@ -179,30 +186,55 @@ function App() {
       }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
       const currentSession = sessions[currentSessionIndex];
       if (currentSession && focusedArtifactIndex !== null) {
           const artifact = currentSession.artifacts[focusedArtifactIndex];
-          if (artifact) setDrawerState({ isOpen: true, mode: 'export', title: 'Export Component', data: artifact });
+          if (artifact) {
+              setDrawerState({ isOpen: true, mode: 'export', title: 'Export Component', data: artifact });
+              
+              // Generate thumbnail lazily in background if not already in cache
+              const thumbnailId = getThumbnailId(artifact.html);
+              if (!thumbnailCache.has(thumbnailId)) {
+                  try {
+                      const { generateThumbnail } = await import('./services/screenshotService');
+                      generateThumbnail(artifact.html, 800, 600).then(generated => {
+                          if (generated) {
+                              thumbnailCache.set(thumbnailId, generated);
+                              window.dispatchEvent(new CustomEvent('thumbnail_generated', { detail: { id: thumbnailId, dataUrl: generated } }));
+                          }
+                      }).catch(e => console.error("Export thumbnail generation failed:", e));
+                  } catch (err) {
+                      console.error("Export thumbnail import failed:", err);
+                  }
+              }
+          }
       }
   };
 
   const handleSendMessage = useCallback(async (manualPrompt?: string) => {
-    const promptToUse = manualPrompt || inputValue;
+    let promptToUse = manualPrompt || inputValue;
+    if (!promptToUse.trim() && referenceImage) {
+        promptToUse = "Extract the palette, mood, texture, symbols, and visual language from the reference image, then generate a music-product UI component inspired by it.";
+    }
     const trimmedInput = promptToUse.trim();
     
     if (!trimmedInput || isLoading) return;
     
     stopDictation();
     
-    if (!manualPrompt) setInputValue('');
+    if (!manualPrompt) {
+        setInputValue('');
+        setReferenceImage(null);
+    }
 
     const options = {
       componentType: selectedPreset.label,
       componentInstruction: selectedPreset.instruction,
       isDualMode,
       showStyleDna,
-      styleDnaPrompt: getDnaPrompt()
+      styleDnaPrompt: getDnaPrompt(),
+      referenceImage: referenceImage || undefined
     };
 
     await runSendMessage(trimmedInput, options, () => {
@@ -270,6 +302,7 @@ function App() {
           if (generated) {
               thumbnailDataUrl = generated;
               thumbnailCache.set(thumbnailId, generated);
+              window.dispatchEvent(new CustomEvent('thumbnail_generated', { detail: { id: thumbnailId, dataUrl: generated } }));
           }
       }
 
@@ -287,12 +320,19 @@ function App() {
           favorite: false,
           timestamp: Date.now()
       });
-      alert('Component saved to Library!');
+      alert(t('saved_to_lib'));
   };
 
   return (
     <>
-        <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+        <SettingsPanel 
+            isOpen={isSettingsOpen} 
+            onClose={() => setIsSettingsOpen(false)} 
+            onOpenInfo={() => {
+                setIsSettingsOpen(false);
+                setIsInfoOpen(true);
+            }} 
+        />
         <LibraryDrawer 
             isOpen={isLibraryOpen} 
             onClose={() => setIsLibraryOpen(false)} 
@@ -306,18 +346,22 @@ function App() {
                 });
             }} 
         />
+        <InfoDrawer 
+            isOpen={isInfoOpen} 
+            onClose={() => setIsInfoOpen(false)} 
+        />
         
         <div style={{ position: 'fixed', top: '24px', right: '24px', display: 'flex', gap: '12px', zIndex: 100 }}>
-            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsLibraryOpen(true)}>
+            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsLibraryOpen(true)} title={t('library_title')}>
                 <LibraryIcon />
             </button>
-            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsSettingsOpen(true)}>
+            <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsSettingsOpen(true)} title={t('settings_title')}>
                 <SettingsIcon />
             </button>
         </div>
 
         <a href="https://seihouse.world/" target="_blank" rel="noreferrer" className={`creator-credit ${hasStarted ? 'hide-on-mobile' : ''}`}>
-            Created by SEIHouse
+            {t('created_by')}
         </a>
 
         <ActionDrawer 
@@ -340,10 +384,10 @@ function App() {
             <div className={`stage-container ${focusedArtifactIndex !== null ? 'mode-focus' : 'mode-split'}`}>
                  <div className={`empty-state ${hasStarted ? 'fade-out' : ''}`}>
                      <div className="empty-content">
-                         <h1>SEA Workshop Light</h1>
-                         <p>Creative music UI generation in a flash</p>
+                         <h1>{t('app_title')}</h1>
+                         <p>{t('app_sub')}</p>
                          <button className={`surprise-button ${isDualMode ? 'active' : ''}`} onClick={toggleDualMode} disabled={isLoading}>
-                             <SparklesIcon /> {isDualMode ? "Dual Mode: ON" : "Dual Mode: OFF"}
+                             <SparklesIcon /> {isDualMode ? t('dual_mode_on') : t('dual_mode_off')}
                          </button>
                      </div>
                  </div>
@@ -375,14 +419,44 @@ function App() {
                                 })}
                             </div>
                             {canFuse && focusedArtifactIndex === null && (
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', position: 'relative', zIndex: 10 }}>
-                                    <button 
-                                       className="surprise-button" 
-                                       onClick={() => handleFuse()}
-                                       style={{ background: 'var(--primary-color)', color: '#000', border: 'none', padding: '12px 24px', fontSize: '16px', cursor: 'pointer' }}
-                                    >
-                                        <SparklesIcon /> Fuse Master Component
-                                    </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '32px', position: 'relative', zIndex: 10, gap: '16px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                        — Fusion Modes —
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px' }}>
+                                        <button 
+                                           className="surprise-button" 
+                                           onClick={() => handleFuse('Best Of')}
+                                           style={{ background: 'var(--primary-color)', color: '#000', border: 'none', padding: '12px 20px', fontSize: '14px', cursor: 'pointer' }}
+                                           title="Combine strongest pieces from both"
+                                        >
+                                            <SparklesIcon /> Best Of
+                                        </button>
+                                        <button 
+                                           className="surprise-button" 
+                                           onClick={() => handleFuse('A Look + B Structure')}
+                                           style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '12px 20px', fontSize: '14px', cursor: 'pointer' }}
+                                           title="Use A's visual style, B's layout"
+                                        >
+                                            <SparklesIcon /> A Look + B Structure
+                                        </button>
+                                        <button 
+                                           className="surprise-button" 
+                                           onClick={() => handleFuse('B Look + A Structure')}
+                                           style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '12px 20px', fontSize: '14px', cursor: 'pointer' }}
+                                            title="Use B's visual style, A's layout"
+                                        >
+                                            <SparklesIcon /> B Look + A Structure
+                                        </button>
+                                        <button 
+                                           className="surprise-button" 
+                                           onClick={() => handleFuse('Cleaner / Production')}
+                                           style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '12px 20px', fontSize: '14px', cursor: 'pointer' }}
+                                           title="Simplify messy generated UI"
+                                        >
+                                            <SparklesIcon /> Cleaner / Production
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
