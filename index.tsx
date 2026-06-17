@@ -78,7 +78,7 @@ const saveModelLabSettings = (settings: ModelLabSettings) => {
   window.localStorage.setItem(MODEL_LAB_STORAGE_KEY, JSON.stringify(settings));
 };
 
-const getModelApiKey = (settings: ModelLabSettings) => settings.apiKey.trim() || process.env.API_KEY || '';
+const getModelApiKey = (settings: ModelLabSettings) => settings.apiKey.trim();
 
 type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
@@ -155,11 +155,15 @@ const generateTextStream = async function* ({ settings, prompt }: GenerateTextOp
     const apiKey = getModelApiKey(settings);
     if (!apiKey) throw new Error('Gemini API key is not configured. Add one in Model Lab settings.');
     const ai = new GoogleGenAI({ apiKey });
-    yield* await ai.models.generateContentStream({
+    const responseStream = await ai.models.generateContentStream({
       model: settings.modelName || DEFAULT_MODEL_BY_PROVIDER[settings.provider],
       contents: [{ parts: [{ text: prompt }], role: 'user' }],
       config: { temperature: settings.temperature },
     });
+
+    for await (const chunk of responseStream) {
+      yield { text: typeof chunk.text === 'string' ? chunk.text : '' };
+    }
     return;
   }
 
@@ -259,34 +263,54 @@ function App() {
 
   const parseJsonStream = async function* (responseStream: AsyncGenerator<{ text: string }>) {
       let buffer = '';
+      let objectStart = -1;
+      let depth = 0;
+      let inString = false;
+      let isEscaped = false;
+
       for await (const chunk of responseStream) {
           const text = chunk.text;
           if (typeof text !== 'string') continue;
           buffer += text;
-          let braceCount = 0;
-          let start = buffer.indexOf('{');
-          while (start !== -1) {
-              braceCount = 0;
-              let end = -1;
-              for (let i = start; i < buffer.length; i++) {
-                  if (buffer[i] === '{') braceCount++;
-                  else if (buffer[i] === '}') braceCount--;
-                  if (braceCount === 0 && i > start) {
-                      end = i;
-                      break;
-                  }
+
+          for (let i = 0; i < buffer.length; i++) {
+              const char = buffer[i];
+
+              if (isEscaped) {
+                  isEscaped = false;
+                  continue;
               }
-              if (end !== -1) {
-                  const jsonString = buffer.substring(start, end + 1);
-                  try {
-                      yield JSON.parse(jsonString);
-                      buffer = buffer.substring(end + 1);
-                      start = buffer.indexOf('{');
-                  } catch (e) {
-                      start = buffer.indexOf('{', start + 1);
+
+              if (char === '\\' && inString) {
+                  isEscaped = true;
+                  continue;
+              }
+
+              if (char === '"') {
+                  inString = !inString;
+                  continue;
+              }
+
+              if (inString) continue;
+
+              if (char === '{') {
+                  if (depth === 0) objectStart = i;
+                  depth++;
+              } else if (char === '}') {
+                  depth--;
+
+                  if (depth === 0 && objectStart !== -1) {
+                      const jsonString = buffer.substring(objectStart, i + 1);
+                      try {
+                          yield JSON.parse(jsonString);
+                      } catch (e) {
+                          console.warn('Failed to parse streamed JSON object', e);
+                      }
+
+                      buffer = buffer.substring(i + 1);
+                      i = -1;
+                      objectStart = -1;
                   }
-              } else {
-                  break;
               }
           }
       }
