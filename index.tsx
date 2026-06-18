@@ -22,7 +22,7 @@ import ActionBar from './components/ActionBar';
 import FloatingInput from './components/FloatingInput';
 import LibraryDrawer from './components/LibraryDrawer';
 import InfoDrawer from './components/InfoDrawer';
-import { saveComponent } from './services/dbService';
+import { saveComponent, SavedComponent } from './services/dbService';
 import { getThumbnailId, thumbnailCache } from './hooks/useThumbnail';
 import { useLanguage, LANGUAGE_NAMES, Language } from './localization';
 import { 
@@ -74,6 +74,10 @@ function App() {
     era: 50
   });
 
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editElementData, setEditElementData] = useState<{name: string, html: string} | null>(null);
+  const [editElementInstruction, setEditElementInstruction] = useState('');
+
   // Extract complex state and management into isolated custom hooks
   const {
     sessions,
@@ -89,6 +93,7 @@ function App() {
     applyVariation: runApplyVariation,
     handleRevert,
     handleFuse,
+    handleEditElement,
     nextItem,
     prevItem
   } = useGenerativeSessions();
@@ -114,6 +119,66 @@ function App() {
   useEffect(() => {
       inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (focusedArtifactIndex === null) {
+      setIsEditMode(false);
+      setEditElementData(null);
+    }
+  }, [focusedArtifactIndex]);
+
+  const handleApplyElementEdit = async () => {
+    if (!editElementData || !editElementInstruction.trim()) return;
+    await handleEditElement(editElementInstruction, editElementData.html, editElementData.name, () => {
+        setEditElementData(null);
+        setEditElementInstruction('');
+        setIsEditMode(false);
+    });
+  };
+
+  const handleLoadIntoWorkspace = (comp: SavedComponent) => {
+    const newSession: Session = {
+        id: comp.id + '-session',
+        prompt: comp.prompt,
+        componentType: comp.preset || 'default',
+        timestamp: Date.now(),
+        artifacts: [
+            {
+                id: comp.id,
+                styleName: comp.preset || 'default',
+                html: comp.html,
+                status: 'complete',
+                history: [
+                    {
+                        html: comp.html,
+                        timestamp: Date.now(),
+                        label: 'Loaded Saved Version'
+                    }
+                ]
+            }
+        ]
+    };
+
+    setSessions((prev: Session[]) => {
+        const exists = prev.findIndex(s => s.artifacts.some(a => a.id === comp.id));
+        if (exists !== -1) {
+            setCurrentSessionIndex(exists);
+            setFocusedArtifactIndex(0);
+            return prev;
+        }
+        const nextSessions = [...prev, newSession];
+        setCurrentSessionIndex(nextSessions.length - 1);
+        setFocusedArtifactIndex(0);
+        return nextSessions;
+    });
+
+    setDrawerState({
+        isOpen: false,
+        mode: null,
+        title: '',
+        data: null
+    });
+  };
 
   // Fix for mobile: reset scroll when focusing an item to prevent "overscroll" state
   useEffect(() => {
@@ -370,6 +435,7 @@ function App() {
             isLoadingDrawer={isLoadingDrawer}
             componentVariations={componentVariations}
             applyVariation={applyVariation}
+            onLoadIntoWorkspace={handleLoadIntoWorkspace}
         />
 
         <div className="immersive-app">
@@ -414,6 +480,10 @@ function App() {
                                             onClick={() => setFocusedArtifactIndex(aIndex)}
                                             onRevert={handleRevert}
                                             onDismiss={handleDismissSession}
+                                            isEditMode={isEditMode}
+                                            onElementSelect={(name, html) => {
+                                                setEditElementData({name, html});
+                                            }}
                                         />
                                     );
                                 })}
@@ -479,12 +549,80 @@ function App() {
                 focusedArtifactIndex={focusedArtifactIndex}
                 currentSession={currentSession}
                 isLoading={isLoading}
+                isEditMode={isEditMode}
+                setIsEditMode={(v) => { setIsEditMode(v); if (!v) setEditElementData(null); }}
                 setFocusedArtifactIndex={setFocusedArtifactIndex}
                 handleGenerateVariations={handleGenerateVariations}
                 handleShowCode={handleShowCode}
                 handleExport={handleExport}
                 handleSave={handleSaveArtifact}
             />
+
+            {editElementData && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '100px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(0, 0, 0, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    width: '90%',
+                    maxWidth: '500px',
+                    zIndex: 1000,
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    fontFamily: 'Inter, sans-serif'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ color: '#04ACFF', fontSize: '12px', fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
+                            Editing: {editElementData.name}
+                        </span>
+                        <button 
+                            onClick={() => setEditElementData(null)}
+                            style={{ background: 'transparent', border: 'none', color: '#FAFAFA', cursor: 'pointer' }}
+                        >✕</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                            autoFocus
+                            type="text" 
+                            placeholder="What do you want changed?"
+                            value={editElementInstruction}
+                            onChange={(e) => setEditElementInstruction(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleApplyElementEdit(); }}
+                            disabled={isLoading}
+                            style={{
+                                flex: 1,
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '6px',
+                                padding: '10px 12px',
+                                color: '#FAFAFA',
+                                fontSize: '14px',
+                                outline: 'none'
+                            }}
+                        />
+                        <button 
+                            onClick={handleApplyElementEdit}
+                            disabled={isLoading || !editElementInstruction.trim()}
+                            style={{
+                                background: '#04ACFF',
+                                border: 'none',
+                                borderRadius: '6px',
+                                color: '#000',
+                                padding: '0 16px',
+                                fontWeight: 600,
+                                fontSize: '13px',
+                                cursor: isLoading || !editElementInstruction.trim() ? 'not-allowed' : 'pointer',
+                                opacity: isLoading || !editElementInstruction.trim() ? 0.5 : 1
+                            }}
+                        >
+                            {isLoading ? 'Applying...' : 'Apply Edit'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <FloatingInput
                 focusedArtifactIndex={focusedArtifactIndex}

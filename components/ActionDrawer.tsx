@@ -22,6 +22,7 @@ interface ActionDrawerProps {
     isLoadingDrawer: boolean;
     componentVariations: ComponentVariation[];
     applyVariation: (html: string) => void;
+    onLoadIntoWorkspace?: (savedComp: any) => void;
 }
 
 export default function ActionDrawer({
@@ -29,7 +30,8 @@ export default function ActionDrawer({
     setDrawerState,
     isLoadingDrawer,
     componentVariations,
-    applyVariation
+    applyVariation,
+    onLoadIntoWorkspace
 }: ActionDrawerProps) {
     const [isExportingReact, setIsExportingReact] = useState(false);
     const [isExportingReactTailwind, setIsExportingReactTailwind] = useState(false);
@@ -58,7 +60,7 @@ export default function ActionDrawer({
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Component-${drawerState.data?.id}.tsx`;
+            a.download = `Component-${drawerState.data?.id || 'export'}.tsx`;
             a.click();
             URL.revokeObjectURL(url);
             
@@ -85,8 +87,80 @@ export default function ActionDrawer({
             )}
 
             {drawerState.mode === 'preview' && (
-                <div style={{ width: '100%', height: 'calc(100vh - 120px)', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
-                    <iframe srcDoc={drawerState.data?.html} title="Preview" sandbox="allow-scripts allow-same-origin allow-forms" style={{ width: '100%', height: '100%', border: 'none' }} />
+                <div className="flex flex-col gap-4 h-[calc(100vh-120px)] pb-4">
+                    {/* Workspace restoration details */}
+                    <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-xl border border-white/10 shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Workspace Actions</span>
+                        </div>
+                        <button 
+                            onClick={() => onLoadIntoWorkspace?.(drawerState.data)}
+                            className="w-full flex items-center justify-center gap-2 bg-[#04ACFF] hover:bg-[#0298e0] transition text-black font-semibold py-2.5 px-4 rounded-lg text-sm cursor-pointer shadow-md font-sans"
+                        >
+                            <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 000-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit in Workspace
+                        </button>
+                    </div>
+
+                    {/* Export Panel directly in Preview */}
+                    <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-xl border border-white/10 shadow-lg">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Direct Export Code</span>
+                        <div className="grid grid-cols-3 gap-2">
+                            <button 
+                                onClick={async () => {
+                                    if (drawerState.data?.html) {
+                                        await exportToZip(drawerState.data.html, `component-${drawerState.data?.id}`);
+                                    }
+                                }}
+                                className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white rounded-lg p-3 text-xs transition cursor-pointer border border-white/5"
+                            >
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                ZIP Archive
+                            </button>
+                            <button 
+                                disabled={isExportingReact || isExportingReactTailwind} 
+                                onClick={() => handleGenerateExport('react')}
+                                className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white rounded-lg p-3 text-xs transition cursor-pointer border border-white/5 disabled:opacity-50"
+                            >
+                                {isExportingReact ? (
+                                    <span className="animate-spin text-gray-400 text-sm">⏳</span>
+                                ) : (
+                                    <svg className="w-4 h-4 text-[#04ACFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                    </svg>
+                                )}
+                                React Code
+                            </button>
+                            <button 
+                                disabled={isExportingReact || isExportingReactTailwind} 
+                                onClick={() => handleGenerateExport('react-tailwind')}
+                                className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white rounded-lg p-3 text-xs transition cursor-pointer border border-white/5 disabled:opacity-50"
+                            >
+                                {isExportingReactTailwind ? (
+                                    <span className="animate-spin text-gray-400 text-sm">⏳</span>
+                                ) : (
+                                    <svg className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                )}
+                                React + TW
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Integrated Interactive Preview Iframe */}
+                    <div className="flex-1 w-full rounded-xl overflow-hidden bg-white border border-white/10 shadow-inner flex flex-col min-h-[320px]">
+                        <iframe 
+                            srcDoc={drawerState.data?.html} 
+                            title="Preview" 
+                            sandbox="allow-scripts allow-same-origin allow-forms" 
+                            className="w-full h-full border-none flex-1" 
+                        />
+                    </div>
                 </div>
             )}
             

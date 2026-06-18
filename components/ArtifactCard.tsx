@@ -15,6 +15,8 @@ interface ArtifactCardProps {
     onClick: () => void;
     onRevert?: (artifactId: string, html: string) => void;
     onDismiss?: () => void;
+    isEditMode?: boolean;
+    onElementSelect?: (name: string, html: string) => void;
 }
 
 const ArtifactCard = React.memo(({ 
@@ -22,7 +24,9 @@ const ArtifactCard = React.memo(({
     isFocused, 
     onClick,
     onRevert,
-    onDismiss
+    onDismiss,
+    isEditMode,
+    onElementSelect
 }: ArtifactCardProps) => {
     const { t } = useLanguage();
     const codeRef = useRef<HTMLPreElement>(null);
@@ -37,6 +41,18 @@ const ArtifactCard = React.memo(({
             codeRef.current.scrollTop = codeRef.current.scrollHeight;
         }
     }, [artifact.html]);
+
+    // Handle Edit Mode integration
+    useEffect(() => {
+        if (!isEditMode || !onElementSelect) return;
+        const handleMessage = (e: MessageEvent) => {
+            if (e.data && e.data.type === 'ELEMENT_SELECTED' && e.data.artifactId === artifact.id) {
+                onElementSelect(e.data.elementName, e.data.elementHtml);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [isEditMode, artifact.id, onElementSelect]);
 
     // Close history view when active card focus changes
     useEffect(() => {
@@ -68,6 +84,60 @@ const ArtifactCard = React.memo(({
         } catch (err) {
             console.error('Failed to copy code: ', err);
         }
+    };
+
+    const getSrcDoc = () => {
+        if (!isEditMode || artifact.status !== 'complete') return artifact.html;
+        
+        const script = `
+        <script>
+            (function() {
+                let hoveredEl = null;
+                const style = document.createElement('style');
+                style.innerHTML = '.sea-edit-outline { outline: 2px solid #04ACFF !important; outline-offset: -2px !important; cursor: pointer !important; transition: outline 0.1s; }';
+                document.head.appendChild(style);
+
+                document.body.addEventListener('mouseover', (e) => {
+                    if(e.target === document.body || e.target === document.documentElement) return;
+                    e.target.classList.add('sea-edit-outline');
+                    hoveredEl = e.target;
+                });
+                document.body.addEventListener('mouseout', (e) => {
+                    e.target.classList.remove('sea-edit-outline');
+                });
+                document.body.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if(!hoveredEl) return;
+                    
+                    const tag = hoveredEl.tagName.toLowerCase();
+                    const id = hoveredEl.id ? '#' + hoveredEl.id : '';
+                    let classes = hoveredEl.className;
+                    if (typeof classes === 'string') {
+                        classes = classes.replace('sea-edit-outline', '').trim();
+                        classes = classes.split(' ').filter(Boolean).join('.');
+                        if (classes) classes = '.' + classes;
+                    } else {
+                        classes = '';
+                    }
+                    
+                    let name = tag + id + classes;
+                    
+                    const clone = hoveredEl.cloneNode(true);
+                    clone.classList.remove('sea-edit-outline');
+                    if(clone.classList.length === 0) clone.removeAttribute('class');
+                    
+                    window.parent.postMessage({
+                        type: 'ELEMENT_SELECTED',
+                        artifactId: '${artifact.id}',
+                        elementName: name,
+                        elementHtml: clone.outerHTML
+                    }, '*');
+                }, true);
+            })();
+        </script>
+        `;
+        return artifact.html + script;
     };
 
     return (
@@ -445,10 +515,11 @@ const ArtifactCard = React.memo(({
                     </div>
                 ) : (
                     <iframe 
-                        srcDoc={artifact.html} 
+                        srcDoc={getSrcDoc()} 
                         title={artifact.id} 
                         sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation allow-same-origin"
                         className="artifact-iframe"
+                        style={{ pointerEvents: isEditMode ? 'auto' : 'auto' }}
                     />
                 )}
             </div>

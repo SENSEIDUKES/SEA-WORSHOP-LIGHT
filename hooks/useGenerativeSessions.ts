@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Artifact, Session, ComponentVariation, ModelSettings } from '../types';
 import { generateId } from '../utils';
 import { generateContent, generateContentStream, getSettings, getSettingsB } from '../ai';
-import { getEditPrompt, getStylePrompt, getGenerateArtifactPrompt, getGenerateVariationsPrompt, getFusionPrompt } from '../prompts';
+import { getEditPrompt, getStylePrompt, getGenerateArtifactPrompt, getGenerateVariationsPrompt, getFusionPrompt, getElementEditPrompt } from '../prompts';
 
 export interface GenerateOptions {
   componentType: string;
@@ -462,6 +462,91 @@ export function useGenerativeSessions() {
     }
   }, [sessions, currentSessionIndex]);
 
+  const handleEditElement = useCallback(async (
+    instruction: string,
+    elementHtml: string,
+    elementName: string,
+    onComplete?: () => void
+  ) => {
+    const currentSession = sessions[currentSessionIndex];
+    if (!currentSession || focusedArtifactIndex === null || isLoading) return;
+    
+    const artifactToEdit = currentSession.artifacts[focusedArtifactIndex];
+    if (!artifactToEdit) return;
+
+    setIsLoading(true);
+
+    setSessions(prev => prev.map(s => s.id === currentSession.id ? {
+      ...s,
+      artifacts: s.artifacts.map((art, i) => i === focusedArtifactIndex ? {
+        ...art,
+        status: 'streaming' as const
+      } : art)
+    } : s));
+
+    try {
+      const settings = getSettings();
+      const editPrompt = getElementEditPrompt(instruction, artifactToEdit.html, elementHtml, elementName);
+
+      const responseStream = await generateContentStream(editPrompt, settings);
+
+      let accumulatedHtml = '';
+      for await (const chunk of responseStream) {
+        const text = chunk.text;
+        if (typeof text === 'string') {
+          accumulatedHtml += text;
+          setSessions(prev => prev.map(sess =>
+            sess.id === currentSession.id ? {
+              ...sess,
+              artifacts: sess.artifacts.map((art, i) =>
+                i === focusedArtifactIndex ? { ...art, html: accumulatedHtml } : art
+              )
+            } : sess
+          ));
+        }
+      }
+
+      let finalHtml = accumulatedHtml.trim();
+      if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
+      if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
+      if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+
+      setSessions(prev => prev.map(sess =>
+        sess.id === currentSession.id ? {
+          ...sess,
+          artifacts: sess.artifacts.map((art, i) =>
+            i === focusedArtifactIndex ? {
+              ...art,
+              html: finalHtml,
+              status: (finalHtml ? 'complete' : 'error') as 'complete' | 'error',
+              history: finalHtml ? [
+                ...(art.history || []),
+                {
+                  html: finalHtml,
+                  timestamp: Date.now(),
+                  label: 'Element Edit: ' + instruction.slice(0, 20)
+                }
+              ] : (art.history || [])
+            } : art
+          )
+        } : sess
+      ));
+    } catch (e: any) {
+      console.error('Error editing element:', e);
+      setSessions(prev => prev.map(sess =>
+        sess.id === currentSession.id ? {
+          ...sess,
+          artifacts: sess.artifacts.map((art, i) =>
+            i === focusedArtifactIndex ? { ...art, status: 'error' as const } : art
+          )
+        } : sess
+      ));
+    } finally {
+      setIsLoading(false);
+      if (onComplete) onComplete();
+    }
+  }, [isLoading, sessions, currentSessionIndex, focusedArtifactIndex]);
+
   const nextItem = useCallback(() => {
     const currentSession = sessions[currentSessionIndex];
     if (focusedArtifactIndex !== null) {
@@ -503,6 +588,7 @@ export function useGenerativeSessions() {
     applyVariation,
     handleRevert,
     handleFuse,
+    handleEditElement,
     nextItem,
     prevItem
   };

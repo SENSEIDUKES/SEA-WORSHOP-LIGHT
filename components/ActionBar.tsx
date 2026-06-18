@@ -6,6 +6,8 @@ interface ActionBarProps {
     focusedArtifactIndex: number | null;
     currentSession?: Session;
     isLoading: boolean;
+    isEditMode: boolean;
+    setIsEditMode: (v: boolean) => void;
     setFocusedArtifactIndex: (index: number | null) => void;
     handleGenerateVariations: () => void;
     handleShowCode: () => void;
@@ -17,6 +19,8 @@ export default function ActionBar({
     focusedArtifactIndex,
     currentSession,
     isLoading,
+    isEditMode,
+    setIsEditMode,
     setFocusedArtifactIndex,
     handleGenerateVariations,
     handleShowCode,
@@ -31,6 +35,13 @@ export default function ActionBar({
              <div className="action-buttons">
                 <button onClick={() => setFocusedArtifactIndex(null)}>
                     <GridIcon /> Grid View
+                </button>
+                <button 
+                  onClick={() => setIsEditMode(!isEditMode)} 
+                  disabled={isLoading}
+                  style={{ background: isEditMode ? 'rgba(4, 172, 255, 0.2)' : undefined, color: isEditMode ? '#04ACFF' : undefined }}
+                >
+                    <SparklesIcon /> {isEditMode ? 'Editing Elements...' : 'Select Elements'}
                 </button>
                 <button onClick={handleGenerateVariations} disabled={isLoading}>
                     <SparklesIcon /> Variations

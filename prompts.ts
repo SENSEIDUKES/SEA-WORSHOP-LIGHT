@@ -99,6 +99,32 @@ ${fusionMode === 'Cleaner / Production' ? 'Simplify the combined designs. Remove
 3. Output ONLY the new raw, self-contained HTML/CSS. No markdown fences. No explanation.
 `.trim();
 
+export const getElementEditPrompt = (
+  instruction: string,
+  htmlCode: string,
+  elementHtml: string,
+  elementName: string
+) => `
+You are SEA Workshop Light, an expert UI designer.
+Your task is to modify a SPECIFIC element within the provided HTML/CSS component based on this request: "${instruction}"
+
+Selected Element: ${elementName}
+Selected Element HTML Snapshot:
+\`\`\`html
+${elementHtml}
+\`\`\`
+
+Full Component HTML:
+\`\`\`html
+${htmlCode}
+\`\`\`
+
+**RULES:**
+1. Keep the same creative direction and layout, but apply the requested changes strictly to the selected element.
+2. If the user asks to modify the element, you MUST update the element in the context of the full component block.
+3. Output ONLY the new raw, self-contained FULL HTML/CSS for the entire component. No markdown fences. No explanation.
+`.trim();
+
 export const getReactExportPrompt = (htmlCode: string) => `
 You are an expert Frontend Engineer. Convert the following HTML/CSS into a clean, modular React component.
 Use standard CSS (not Tailwind) and functional hooks where appropriate.
