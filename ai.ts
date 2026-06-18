@@ -101,8 +101,11 @@ export async function* parseOpenAIStream(response: Response) {
     let buffer = '';
     while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        if (value) {
+            buffer += decoder.decode(value, { stream: !done });
+        } else if (done) {
+            buffer += decoder.decode(new Uint8Array(), { stream: false });
+        }
         
         let lines = buffer.split('\n');
         buffer = lines.pop() || '';
@@ -120,6 +123,24 @@ export async function* parseOpenAIStream(response: Response) {
                     console.warn("Failed to parse stream chunk", dataStr);
                 }
             }
+        }
+
+        if (done) {
+            if (buffer.trim()) {
+                 const trimmed = buffer.trim();
+                 if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+                    const dataStr = trimmed.substring(6);
+                    try {
+                        const parsed = JSON.parse(dataStr);
+                        if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                            yield { text: parsed.choices[0].delta.content };
+                        }
+                    } catch (e) {
+                         console.warn("Failed to parse final stream chunk", dataStr);
+                    }
+                 }
+            }
+            break;
         }
     }
 }

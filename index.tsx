@@ -8,8 +8,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 
-import { Artifact, Session, ComponentVariation, LayoutOption } from './types';
-import { INITIAL_PLACEHOLDERS, COMPONENT_PRESETS, DNA_DIMENSIONS } from './constants';
+import { Artifact, Session, ComponentVariation, LayoutOption, AppSkin } from './types';
+import { INITIAL_PLACEHOLDERS, APP_SKINS } from './constants';
 import { generateContent, getSettings } from './ai';
 import { useGenerativeSessions } from './hooks/useGenerativeSessions';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
@@ -41,6 +41,7 @@ function App() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [placeholders, setPlaceholders] = useState<string[]>(INITIAL_PLACEHOLDERS);
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [activeSkin, setActiveSkin] = useState<AppSkin>(APP_SKINS[0]);
   
   const [drawerState, setDrawerState] = useState<{
       isOpen: boolean;
@@ -62,21 +63,29 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState(COMPONENT_PRESETS[0]);
+  const [selectedPreset, setSelectedPreset] = useState(activeSkin.presets[0]);
 
   const [showStyleDna, setShowStyleDna] = useState(false);
-  const [styleDna, setStyleDna] = useState<Record<string, number>>({
-    theme: 50,
-    complexity: 50,
-    texture: 50,
-    vibe: 50,
-    edge: 50,
-    era: 50
+  const [styleDna, setStyleDna] = useState<Record<string, number>>(() => {
+    const dna: Record<string, number> = {};
+    activeSkin.dnaDimensions.forEach(dim => dna[dim.key] = dim.defaultWeight);
+    return dna;
   });
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [editElementData, setEditElementData] = useState<{name: string, html: string} | null>(null);
   const [editElementInstruction, setEditElementInstruction] = useState('');
+
+  const handleSkinChange = (skinId: string) => {
+      const skin = APP_SKINS.find(s => s.id === skinId);
+      if (skin) {
+          setActiveSkin(skin);
+          setSelectedPreset(skin.presets[0]);
+          const newDna: Record<string, number> = {};
+          skin.dnaDimensions.forEach(dim => newDna[dim.key] = dim.defaultWeight);
+          setStyleDna(newDna);
+      }
+  };
 
   // Extract complex state and management into isolated custom hooks
   const {
@@ -96,7 +105,7 @@ function App() {
     handleEditElement,
     nextItem,
     prevItem
-  } = useGenerativeSessions();
+  } = useGenerativeSessions(activeSkin);
 
   const {
     isDictating,
@@ -105,13 +114,13 @@ function App() {
   } = useSpeechRecognition({ inputValue, setInputValue });
 
   const getDnaPrompt = useCallback(() => {
-    return DNA_DIMENSIONS.map(dim => {
-        const val = styleDna[dim.key];
+    return activeSkin.dnaDimensions.map(dim => {
+        const val = styleDna[dim.key] ?? dim.defaultWeight;
         if (val < 30) return dim.low;
         if (val > 70) return dim.high;
         return `Balanced ${dim.low}/${dim.high}`;
     }).join(', ');
-  }, [styleDna]);
+  }, [styleDna, activeSkin]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
@@ -416,6 +425,43 @@ function App() {
             onClose={() => setIsInfoOpen(false)} 
         />
         
+        <div style={{ position: 'fixed', top: '24px', left: '24px', zIndex: 100 }}>
+            <div style={{
+                background: 'rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+            }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Active Skin
+                </span>
+                <select
+                    value={activeSkin.id}
+                    onChange={(e) => handleSkinChange(e.target.value)}
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        color: 'var(--text-color)',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        outline: 'none',
+                        cursor: 'pointer'
+                    }}
+                >
+                    {APP_SKINS.map(skin => (
+                        <option key={skin.id} value={skin.id} style={{ background: '#111', color: '#fff' }}>
+                            {skin.name}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </div>
+        
         <div style={{ position: 'fixed', top: '24px', right: '24px', display: 'flex', gap: '12px', zIndex: 100 }}>
             <button className="settings-button" style={{ position: 'relative', top: 'auto', right: 'auto' }} onClick={() => setIsLibraryOpen(true)} title={t('library_title')}>
                 <LibraryIcon />
@@ -425,9 +471,7 @@ function App() {
             </button>
         </div>
 
-        <a href="https://seihouse.world/" target="_blank" rel="noreferrer" className={`creator-credit ${hasStarted ? 'hide-on-mobile' : ''}`}>
-            {t('created_by')}
-        </a>
+
 
         <ActionDrawer 
             drawerState={drawerState}
@@ -436,6 +480,7 @@ function App() {
             componentVariations={componentVariations}
             applyVariation={applyVariation}
             onLoadIntoWorkspace={handleLoadIntoWorkspace}
+            activeSkin={activeSkin}
         />
 
         <div className="immersive-app">
@@ -643,6 +688,9 @@ function App() {
                 isDictating={isDictating}
                 toggleDictation={toggleDictation}
                 handleSendMessage={handleSendMessage}
+                referenceImage={referenceImage}
+                setReferenceImage={setReferenceImage}
+                activeSkin={activeSkin}
             />
         </div>
     </>

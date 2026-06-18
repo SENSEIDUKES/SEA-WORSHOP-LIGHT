@@ -5,6 +5,31 @@
 
 export type OutputMode = 'html' | 'react' | 'react-tailwind';
 
+export interface AppSkin {
+  id: string;
+  name: string;
+  description: string;
+  systemPromptInjection: string;
+  presets: SkinComponentPreset[];
+  dnaDimensions: SkinDnaDimension[];
+}
+
+export interface SkinComponentPreset {
+  id: string;
+  label: string;
+  instruction: string;
+}
+
+export interface SkinDnaDimension {
+  key: string;
+  labelLeft: string;
+  labelRight: string;
+  low: string;
+  high: string;
+  defaultWeight: number;
+}
+
+
 export interface ComponentPropsContract {
   name: string;
   type: string; // e.g., 'string', 'number', 'boolean', 'function'

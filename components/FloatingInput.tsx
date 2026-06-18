@@ -1,7 +1,6 @@
 import React from 'react';
 import { SlidersIcon, ThinkingIcon, MicOffIcon, MicIcon, ArrowUpIcon } from './Icons';
-import { COMPONENT_PRESETS, DNA_DIMENSIONS } from '../constants';
-import { Session } from '../types';
+import { Session, AppSkin } from '../types';
 
 interface FloatingInputProps {
     focusedArtifactIndex: number | null;
@@ -24,6 +23,7 @@ interface FloatingInputProps {
     handleSendMessage: () => void;
     referenceImage: string | null;
     setReferenceImage: (img: string | null) => void;
+    activeSkin: AppSkin;
 }
 
 export default function FloatingInput({
@@ -46,7 +46,8 @@ export default function FloatingInput({
     toggleDictation,
     handleSendMessage,
     referenceImage,
-    setReferenceImage
+    setReferenceImage,
+    activeSkin
 }: FloatingInputProps) {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -70,7 +71,7 @@ export default function FloatingInput({
             <div className="input-group">
                 {focusedArtifactIndex === null && (
                     <div className="preset-pills-container">
-                        {COMPONENT_PRESETS.map(preset => (
+                        {activeSkin.presets.map(preset => (
                             <button
                                 key={preset.id}
                                 className={`preset-pill ${selectedPreset.id === preset.id ? 'active' : ''}`}
@@ -91,14 +92,14 @@ export default function FloatingInput({
                 
                 {showStyleDna && (
                     <div className="dna-panel-container">
-                        {DNA_DIMENSIONS.map(dim => (
+                        {activeSkin.dnaDimensions.map(dim => (
                             <div key={dim.key} className="dna-slider-row">
                                 <span className="dna-label left">{dim.labelLeft}</span>
                                 <input 
                                     type="range"
                                     className="dna-slider"
                                     min="0" max="100" 
-                                    value={styleDna[dim.key]} 
+                                    value={styleDna[dim.key] !== undefined ? styleDna[dim.key] : dim.defaultWeight} 
                                     onChange={(e) => setStyleDna({...styleDna, [dim.key]: parseInt(e.target.value)})}
                                 />
                                 <span className="dna-label right">{dim.labelRight}</span>

@@ -179,14 +179,14 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                 
                 <div className="settings-body">
                     <div className="setting-group relative">
-                        <label>Provider</label>
+                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Provider</label>
                         <div className="relative">
                             <button
                                 type="button"
                                 onClick={() => setProviderDropdownOpen(!providerDropdownOpen)}
-                                className="w-full text-left flex justify-between items-center bg-[rgba(0,0,0,0.3)] border border-[var(--glass-border)] text-[var(--text-primary)] px-4 py-3 rounded-lg text-sm select-none cursor-pointer focus:border-[rgba(255,255,255,0.3)] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.05)] outline-none transition"
+                                className="w-full text-left flex justify-between items-center bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.1)] hover:border-white/20 text-[#FAFAFA]/95 px-3.5 py-2.5 rounded-lg text-xs font-medium select-none cursor-pointer focus:border-[#04ACFF]/50 focus:shadow-[0_0_0_2px_rgba(4,172,255,0.15)] outline-none transition-all duration-150"
                             >
-                                <span className="capitalize">
+                                <span className="capitalize tracking-tight">
                                     {currentSettings.provider === 'gemini' 
                                         ? 'Gemini' 
                                         : currentSettings.provider === 'openrouter' 
@@ -195,8 +195,8 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                                                 ? 'Ollama (Local)' 
                                                 : 'LM Studio (Local)'}
                                 </span>
-                                <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${providerDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${providerDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
 
@@ -260,7 +260,7 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                     </div>
 
                     <div className="setting-group relative">
-                        <label>Model Name</label>
+                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Model Name</label>
                         
                         {/* Pinned Quick-Switch Badges */}
                         {pinnedModels.length > 0 && (
@@ -303,17 +303,17 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                                     <button
                                         type="button"
                                         onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                                        className="w-full text-left flex justify-between items-center bg-[rgba(0,0,0,0.3)] border border-[var(--glass-border)] text-[var(--text-primary)] px-4 py-3 rounded-lg text-sm select-none cursor-pointer focus:border-[rgba(255,255,255,0.3)] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.05)] outline-none"
+                                        className="w-full text-left flex justify-between items-center bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.1)] hover:border-white/20 text-[#FAFAFA]/95 px-3.5 py-2.5 rounded-lg text-xs font-medium select-none cursor-pointer focus:border-[#04ACFF]/50 focus:shadow-[0_0_0_2px_rgba(4,172,255,0.15)] outline-none transition-all duration-150"
                                     >
-                                        <span className="truncate">{currentSettings.model || "Select a model"}</span>
+                                        <span className="truncate font-mono tracking-tight text-[#FAFAFA]/90">{currentSettings.model || "Select a model"}</span>
                                         <div className="flex items-center gap-2">
                                             {pinnedModels.includes(currentSettings.model) && (
                                                 <svg className="w-3.5 h-3.5 text-yellow-500 fill-current" viewBox="0 0 20 20">
                                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                                 </svg>
                                             )}
-                                            <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${modelDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                            <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${modelDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </div>
                                     </button>
@@ -496,6 +496,17 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                         >
                             <span>ℹ️</span> {t('how_to_use')}
                         </button>
+                    </div>
+
+                    <div className="flex justify-center items-center mt-3 pt-1">
+                        <a 
+                            href="https://seihouse.world/" 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-[13px] text-[var(--text-secondary)] opacity-50 hover:opacity-100 transition-opacity duration-200 font-medium no-underline"
+                        >
+                            {t('created_by')}
+                        </a>
                     </div>
                 </div>
 

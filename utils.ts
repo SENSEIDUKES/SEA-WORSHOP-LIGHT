@@ -46,3 +46,17 @@ export const exportToZip = async (sourceHtml: string, name: string) => {
     a.click();
     URL.revokeObjectURL(url);
 };
+
+export const extractHtmlFromMarkdown = (text: string): string => {
+    if (!text) return '';
+    let cleanText = text.trim();
+    const htmlMatch = cleanText.match(/```(?:html|xml)?\n([\s\S]*?)```/);
+    if (htmlMatch) {
+         return htmlMatch[1].trim();
+    }
+    // Fallback manual checks
+    if (cleanText.startsWith('```html')) cleanText = cleanText.substring(7).trimStart();
+    if (cleanText.startsWith('```')) cleanText = cleanText.substring(3).trimStart();
+    if (cleanText.endsWith('```')) cleanText = cleanText.substring(0, cleanText.length - 3).trimEnd();
+    return cleanText.trim();
+};

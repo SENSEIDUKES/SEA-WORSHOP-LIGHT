@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Artifact, Session, ComponentVariation, ModelSettings } from '../types';
-import { generateId } from '../utils';
+import { Artifact, Session, ComponentVariation, ModelSettings, AppSkin } from '../types';
+import { generateId, extractHtmlFromMarkdown } from '../utils';
 import { generateContent, generateContentStream, getSettings, getSettingsB } from '../ai';
 import { getEditPrompt, getStylePrompt, getGenerateArtifactPrompt, getGenerateVariationsPrompt, getFusionPrompt, getElementEditPrompt } from '../prompts';
 
@@ -13,7 +13,7 @@ export interface GenerateOptions {
   referenceImage?: string;
 }
 
-export function useGenerativeSessions() {
+export function useGenerativeSessions(activeSkin: AppSkin) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionIndex, setCurrentSessionIndex] = useState<number>(-1);
   const [focusedArtifactIndex, setFocusedArtifactIndex] = useState<number | null>(null);
@@ -86,7 +86,7 @@ export function useGenerativeSessions() {
 
       try {
         const settings = getSettings();
-        const editPrompt = getEditPrompt(trimmedInput, artifactToEdit.html, artifactToEdit.styleName);
+        const editPrompt = getEditPrompt(trimmedInput, artifactToEdit.html, artifactToEdit.styleName, activeSkin);
 
         const responseStream = await generateContentStream(editPrompt, settings);
 
@@ -106,10 +106,7 @@ export function useGenerativeSessions() {
           }
         }
 
-        let finalHtml = accumulatedHtml.trim();
-        if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
-        if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
-        if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+        let finalHtml = extractHtmlFromMarkdown(accumulatedHtml);
 
         setSessions(prev => prev.map(sess =>
           sess.id === sessionToEdit.id ? {
@@ -176,7 +173,7 @@ export function useGenerativeSessions() {
       const settings = getSettings();
       const dnaContext = options.showStyleDna ? `\n**STYLE DNA (User Selected Aesthetics):**\n${options.styleDnaPrompt}\n` : '';
 
-      const stylePrompt = getStylePrompt(trimmedInput, options.componentType, dnaContext);
+      const stylePrompt = getStylePrompt(trimmedInput, options.componentType, dnaContext, activeSkin);
 
       const styleResponse = await generateContent(stylePrompt, settings, options.referenceImage);
 
@@ -222,7 +219,8 @@ export function useGenerativeSessions() {
             options.componentType,
             options.componentInstruction,
             styleInstruction,
-            dnaContext
+            dnaContext,
+            activeSkin
           );
 
           const responseStream = await generateContentStream(prompt, activeSettings, options.referenceImage);
@@ -243,10 +241,7 @@ export function useGenerativeSessions() {
             }
           }
 
-          let finalHtml = accumulatedHtml.trim();
-          if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
-          if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
-          if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+          let finalHtml = extractHtmlFromMarkdown(accumulatedHtml);
 
           setSessions(prev => prev.map(sess =>
             sess.id === sessionId ? {
@@ -302,7 +297,7 @@ export function useGenerativeSessions() {
       setIsLoading(false);
       if (onComplete) onComplete();
     }
-  }, [isLoading, sessions.length, currentSessionIndex, focusedArtifactIndex]);
+  }, [isLoading, sessions.length, currentSessionIndex, focusedArtifactIndex, activeSkin]);
 
   const handleGenerateVariations = useCallback(async (onStart?: (artifactId: string) => void) => {
     const currentSession = sessions[currentSessionIndex];
@@ -322,7 +317,8 @@ export function useGenerativeSessions() {
 
       const prompt = getGenerateVariationsPrompt(
         currentSession.prompt,
-        currentSession.componentType || 'Freeform Component'
+        currentSession.componentType || 'Freeform Component',
+        activeSkin
       );
 
       const responseStream = await generateContentStream(prompt, settings);
@@ -337,7 +333,7 @@ export function useGenerativeSessions() {
     } finally {
       setIsLoading(false);
     }
-  }, [sessions, currentSessionIndex, focusedArtifactIndex]);
+  }, [sessions, currentSessionIndex, focusedArtifactIndex, activeSkin]);
 
   const applyVariation = useCallback((html: string, onComplete?: () => void) => {
     if (focusedArtifactIndex === null) return;
@@ -410,7 +406,8 @@ export function useGenerativeSessions() {
         currentSession.componentType || 'Freeform Component',
         artA.html,
         artB.html,
-        fusionMode
+        fusionMode,
+        activeSkin
       );
 
       const responseStream = await generateContentStream(prompt, settings);
@@ -429,10 +426,7 @@ export function useGenerativeSessions() {
         }
       }
       
-      let finalHtml = accumulatedHtml.trim();
-      if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
-      if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
-      if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+      let finalHtml = extractHtmlFromMarkdown(accumulatedHtml);
 
       setSessions(prev => prev.map((sess, i) => i === currentSessionIndex ? {
         ...sess,
@@ -460,7 +454,7 @@ export function useGenerativeSessions() {
     } finally {
       setIsLoading(false);
     }
-  }, [sessions, currentSessionIndex]);
+  }, [sessions, currentSessionIndex, activeSkin]);
 
   const handleEditElement = useCallback(async (
     instruction: string,
@@ -486,7 +480,7 @@ export function useGenerativeSessions() {
 
     try {
       const settings = getSettings();
-      const editPrompt = getElementEditPrompt(instruction, artifactToEdit.html, elementHtml, elementName);
+      const editPrompt = getElementEditPrompt(instruction, artifactToEdit.html, elementHtml, elementName, activeSkin);
 
       const responseStream = await generateContentStream(editPrompt, settings);
 
@@ -506,10 +500,7 @@ export function useGenerativeSessions() {
         }
       }
 
-      let finalHtml = accumulatedHtml.trim();
-      if (finalHtml.startsWith('```html')) finalHtml = finalHtml.substring(7).trimStart();
-      if (finalHtml.startsWith('```')) finalHtml = finalHtml.substring(3).trimStart();
-      if (finalHtml.endsWith('```')) finalHtml = finalHtml.substring(0, finalHtml.length - 3).trimEnd();
+      let finalHtml = extractHtmlFromMarkdown(accumulatedHtml);
 
       setSessions(prev => prev.map(sess =>
         sess.id === currentSession.id ? {
@@ -545,7 +536,7 @@ export function useGenerativeSessions() {
       setIsLoading(false);
       if (onComplete) onComplete();
     }
-  }, [isLoading, sessions, currentSessionIndex, focusedArtifactIndex]);
+  }, [isLoading, sessions, currentSessionIndex, focusedArtifactIndex, activeSkin]);
 
   const nextItem = useCallback(() => {
     const currentSession = sessions[currentSessionIndex];

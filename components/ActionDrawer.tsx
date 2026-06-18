@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import SideDrawer from './SideDrawer';
 import { ThinkingIcon } from './Icons';
-import { ComponentVariation } from '../types';
+import { ComponentVariation, AppSkin } from '../types';
 import { generateContent, getSettings } from '../ai';
 import { getReactExportPrompt, getReactTailwindExportPrompt } from '../prompts';
 import { exportToZip } from '../utils';
@@ -23,6 +23,7 @@ interface ActionDrawerProps {
     componentVariations: ComponentVariation[];
     applyVariation: (html: string) => void;
     onLoadIntoWorkspace?: (savedComp: any) => void;
+    activeSkin: AppSkin;
 }
 
 export default function ActionDrawer({
@@ -31,10 +32,55 @@ export default function ActionDrawer({
     isLoadingDrawer,
     componentVariations,
     applyVariation,
-    onLoadIntoWorkspace
+    onLoadIntoWorkspace,
+    activeSkin
 }: ActionDrawerProps) {
     const [isExportingReact, setIsExportingReact] = useState(false);
     const [isExportingReactTailwind, setIsExportingReactTailwind] = useState(false);
+    const [isCopyingToClipboard, setIsCopyingToClipboard] = useState(false);
+
+    const handleCopyToClipboard = async () => {
+        if (!drawerState.data?.html) return;
+        
+        try {
+            setIsCopyingToClipboard(true);
+            const settings = getSettings();
+            const prompt = getReactExportPrompt(drawerState.data.html, activeSkin);
+            const response = await generateContent(prompt, settings);
+            
+            let code = response.text || '';
+            const codeBlockMatch = code.match(/```[a-z]*\n([\s\S]*?)```/);
+            if (codeBlockMatch) {
+                code = codeBlockMatch[1];
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(code);
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = code;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                    throw new Error("Unable to copy. Clipboard API not supported.");
+                }
+                textArea.remove();
+            }
+            alert('Component copied to clipboard!');
+        } catch (e) {
+            console.error('Copy failed:', e);
+            alert('Failed to copy to clipboard.');
+        } finally {
+            setIsCopyingToClipboard(false);
+        }
+    };
 
     const handleGenerateExport = async (type: 'react' | 'react-tailwind') => {
         if (!drawerState.data?.html) return;
@@ -45,8 +91,8 @@ export default function ActionDrawer({
 
             const settings = getSettings();
             const prompt = type === 'react' 
-                ? getReactExportPrompt(drawerState.data.html)
-                : getReactTailwindExportPrompt(drawerState.data.html);
+                ? getReactExportPrompt(drawerState.data.html, activeSkin)
+                : getReactTailwindExportPrompt(drawerState.data.html, activeSkin);
 
             const response = await generateContent(prompt, settings);
             
@@ -107,7 +153,7 @@ export default function ActionDrawer({
                     {/* Export Panel directly in Preview */}
                     <div className="flex flex-col gap-3 bg-white/5 p-4 rounded-xl border border-white/10 shadow-lg">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Direct Export Code</span>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <button 
                                 onClick={async () => {
                                     if (drawerState.data?.html) {
@@ -122,6 +168,20 @@ export default function ActionDrawer({
                                 ZIP Archive
                             </button>
                             <button 
+                                disabled={isCopyingToClipboard} 
+                                onClick={handleCopyToClipboard}
+                                className="flex flex-col items-center justify-center gap-2 bg-[#04ACFF]/10 hover:bg-[#04ACFF]/20 text-white rounded-lg p-3 text-xs transition cursor-pointer border border-[#04ACFF]/20 disabled:opacity-50"
+                            >
+                                {isCopyingToClipboard ? (
+                                    <span className="animate-spin text-[#04ACFF] text-sm">⏳</span>
+                                ) : (
+                                    <svg className="w-4 h-4 text-[#04ACFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m0 0l-3 3m3-3l-3-3" />
+                                    </svg>
+                                )}
+                                Copy to Clipboard
+                            </button>
+                            <button 
                                 disabled={isExportingReact || isExportingReactTailwind} 
                                 onClick={() => handleGenerateExport('react')}
                                 className="flex flex-col items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white rounded-lg p-3 text-xs transition cursor-pointer border border-white/5 disabled:opacity-50"
@@ -129,7 +189,7 @@ export default function ActionDrawer({
                                 {isExportingReact ? (
                                     <span className="animate-spin text-gray-400 text-sm">⏳</span>
                                 ) : (
-                                    <svg className="w-4 h-4 text-[#04ACFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                                     </svg>
                                 )}
@@ -194,6 +254,16 @@ export default function ActionDrawer({
                                 await exportToZip(drawerState.data.html, `component-${drawerState.data?.id}`);
                             }
                         }}>Download ZIP</button>
+                    </div>
+                    <div className="export-card available">
+                        <h3>Copy to Clipboard</h3>
+                        <p>Generate a React functional component and copy it to your clipboard for your Audio Player skin.</p>
+                        <button 
+                            disabled={isCopyingToClipboard} 
+                            onClick={handleCopyToClipboard}
+                        >
+                            {isCopyingToClipboard ? 'Copying...' : 'Copy React to Clipboard'}
+                        </button>
                     </div>
                     <div className="export-card available">
                         <h3>React Component</h3>
