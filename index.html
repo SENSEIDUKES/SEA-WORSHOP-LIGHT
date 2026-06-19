@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SEA Workshop Light</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script type="importmap">
@@ -22,5 +24,14 @@
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
 <script type="module" src="/index.tsx"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('[PWA] Service Worker registered successfully', reg.scope))
+                    .catch(err => console.error('[PWA] Service Worker registration failed', err));
+            });
+        }
+    </script>
 </body>
 </html>

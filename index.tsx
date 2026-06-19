@@ -45,7 +45,7 @@ function App() {
   
   const [drawerState, setDrawerState] = useState<{
       isOpen: boolean;
-      mode: 'code' | 'variations' | 'export' | 'preview' | null;
+      mode: 'code' | 'variations' | 'export' | 'preview' | 'playground' | null;
       title: string;
       data: any; 
   }>({ isOpen: false, mode: null, title: '', data: null });

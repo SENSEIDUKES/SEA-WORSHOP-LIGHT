@@ -11,6 +11,39 @@ interface Props {
 
 export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
     const { lang, changeLanguage, t } = useLanguage();
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+    const [isInstalledApp, setIsInstalledApp] = useState(false);
+
+    useEffect(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+            setIsInstalledApp(true);
+        }
+
+        const handleBeforeInstall = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+        };
+    }, []);
+
+    const triggerInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setIsInstalledApp(true);
+            setIsInstallable(false);
+            setDeferredPrompt(null);
+        }
+    };
+
     const [activeTab, setActiveTab] = useState<'A' | 'B'>('A');
     const [settingsA, setSettingsA] = useState<ModelSettings>(getSettings());
     const [settingsB, setSettingsB] = useState<ModelSettings>(getSettingsB());
@@ -496,6 +529,61 @@ export default function SettingsPanel({ isOpen, onClose, onOpenInfo }: Props) {
                         >
                             <span>ℹ️</span> {t('how_to_use')}
                         </button>
+                    </div>
+
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '20px 0' }}></div>
+
+                    {/* PWA Section */}
+                    <div className="setting-group" style={{ background: 'rgba(4, 172, 255, 0.03)', border: '1px solid rgba(4, 172, 255, 0.15)', padding: '14px', borderRadius: '8px', fontFamily: 'Rubik, sans-serif' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#04ACFF', boxShadow: '0 0 8px #04ACFF' }} />
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#FAFAFA', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                Portable Desktop Companion
+                            </span>
+                        </div>
+                        <p style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+                            Install as a local standalone app shell. Completely offline-compatible when paired with Ollama or LM Studio.
+                        </p>
+                        
+                        {isInstalledApp ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#04ACFF', fontWeight: 500, background: 'rgba(4,172,255,0.08)', padding: '8px 12px', borderRadius: '6px' }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Standalone Client Active
+                            </div>
+                        ) : isInstallable ? (
+                            <button
+                                className="test-btn"
+                                onClick={triggerInstall}
+                                style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    height: '38px',
+                                    background: '#8B0000',
+                                    border: 'none',
+                                    color: '#FAFAFA',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <svg className="w-4 h-4 text-[#FAFAFA]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Install Workspace App
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'rgba(255, 255, 255, 0.4)', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
+                                Standalone Shell Ready (PWA Cache Installed)
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-center items-center mt-3 pt-1">
